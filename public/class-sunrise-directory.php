@@ -80,6 +80,12 @@ class Sunrise_Directory {
 		/* Register Custom Taxonomies and Post Types */
     add_action( 'init', array( $this, 'register_custom_taxonomies_and_post_types' ) );
     
+    /* Add extra ACF metadata after WP All Import saves a post */
+    add_action( 'pmxi_saved_post', array( $this, 'add_acf_metadata_after_wpallimport' ), 10, 1 );
+    
+    /* Add people metadata to single person display post content */
+    add_filter( 'the_content', array( $this, 'sd_person_content' ) );
+    
 	}
 
 	/**
@@ -305,6 +311,77 @@ class Sunrise_Directory {
 	}
 
   /**
+	 *  Displays people metadata in the single CPT content 
+	 *
+	 * @since    1.0.0
+	 */
+	public function sd_person_content($content) {
+		if (is_singular('people') && in_the_loop()) {
+        //Get Person metadata
+        $fields = get_fields();
+        if($fields) {          
+          foreach($fields as $field_name => $value) {
+            $$field_name = trim(str_replace("---", "", $value));
+          }          
+        }
+        
+        if(trim($infotohide) != "" ) { //if some fields need to be hidden and user is not logged in
+          $hiddenfields = str_replace(', ', ',',$infotohide);
+          $hiddenfields = explode(',',$infotohide);
+          foreach($hiddenfields as $findex => $hiddenfieldname ) {
+            $trimmed = trim($hiddenfieldname);
+            $$trimmed = ""; //clear out the $$field_name = $value set (if any) 
+            $result[$trimmed] = ""; 
+          }    
+        }
+        
+        //Display Person metadata
+        $content .= '<div class="personSummary">';
+        
+        if ( has_post_thumbnail()) {
+           $large_image_url = wp_get_attachment_image_src( get_post_thumbnail_id($post->ID), 'large');
+           $content .= '<a href="' . $large_image_url[0] . '" alt="' . the_title_attribute('echo=0') . '" title="' . the_title_attribute('echo=0') . '" >';
+           $content .= get_the_post_thumbnail($post->ID, array(250,250), array('class' => 'alignleft')); 
+           $content .= '</a>';
+        }
+        
+        $content .= '<h2 class="personTitle">'.$this->ats($salutation).$this->ats($first_name).$this->ats($middle_initial).$last_name.'</h2>';
+        $content .= $this->ats( $this->trimCommaSpace( $this->ats($member_type, ", ").$this->ats($designation, ", ").$ministry_status ), '<br />');
+        $content .= $this->ats($address_line_1, '<br />');
+        $content .= $this->ats($address_line_2, '<br />');
+        $content .= $this->ats( $this->trimCommaSpace($this->ats($city, ', ').$province), '<br />' );
+        $content .= $this->ats($postal_code,'<br />');
+        $content .= $this->ats( $this->trimCommaSpace( $this->ats($email,', ').$second_email ), '<br />' );
+        //trimCommaSpace
+        $content .= $this->ats( $this->trimCommaSpace( $this->ats($home_phone, ', ') . $this->ats($work_phone, ', ') . $fax_number ), '<br />' );
+        //Add in person's Directory Orgs
+        
+        $content .= '</div> <!-- end person -->';
+        
+//         $acf_field_groups = acf_get_field_groups();
+//         foreach($acf_field_groups as $acf_field_group) {
+//           foreach($acf_field_group['location'] as $group_locations) {
+//             foreach($group_locations as $rule) {
+// 
+//                 if($rule['param'] == 'post_type' && $rule['operator'] == '==' && $rule['value'] == 'people') {
+//                 
+//                   print_r(acf_get_fields( $acf_field_group ));
+// //                     print_r($acf_field_group);
+//                               
+//                 }
+// 
+//             }
+//             
+//           }
+//             
+//         }
+        
+    }
+
+    return $content;
+	}
+
+  /**
 	 * Registers custom taxonomies:
 	 *    	 
 	 * 
@@ -388,7 +465,7 @@ class Sunrise_Directory {
         'query_var' => true,
         'has_archive' => true,
         'menu_position' => '10',
-        'supports' => array('title','excerpt','revisions','thumbnail'),
+        'supports' => array('title','excerpt','revisions','thumbnail'), //'editor',
         'taxonomies' => array('directory', 'conferences'),
         'labels' => 
           array (
@@ -447,4 +524,76 @@ class Sunrise_Directory {
       );	
 	}
 	
-}
+  /**
+	 * This function trims a trailing ", " from a string         	 
+	 *
+	 * @since    1.0.0
+	 */
+	public function trimCommaSpace($instring) {
+    if(substr($instring,strlen($instring)-2,strlen($instring)) == ', ') {
+        $instring = substr($instring,0,strlen($instring)-2);  
+    }
+    return $instring;
+  }
+  
+  /**
+	 * This function adds a trailing space if input string not empty - else returns ''         	 
+	 *
+	 * @since    1.0.0
+	 */
+	public function ats($instring, $trailer = " ") {
+    if( !empty($instring) ) 
+      $instring .= $trailer;
+    return $instring;
+  }
+
+  /**      
+   * Returns an array of field groups with fields for the passed CPT, where field group ACF location rule of "post_type == CPT" exists.
+   *  - each field group points at an array of its fields, in turn pointed at an array of that field's detailed information:
+   *    - array of info for each field [ ID, key, label, name, type, menu_order, instructions, required, id, class, conditional_logic[array()], etc. ]
+   *  
+   * @since    1.0.0      
+  */
+  public function get_acf_field_groups_by_cpt($cpt) {
+    // need to create cache or transient for this data?
+		
+    $result = array();
+    $acf_field_groups = acf_get_field_groups();
+    foreach($acf_field_groups as $acf_field_group) {
+      foreach($acf_field_group['location'] as $group_locations) {
+        foreach($group_locations as $rule) {
+
+            if($rule['param'] == 'post_type' && $rule['operator'] == '==' && $rule['value'] == $cpt) {
+            
+              $result[] = acf_get_fields( $acf_field_group );
+                          
+            }
+
+        }
+        
+      }
+        
+    }
+    
+    return $result;
+  }
+  
+  /**
+	 * This function runs after WP ALL IMPORT saves a post.
+	 * 
+	 * It adds in the post meta field keys required for ACF.              	 
+	 *
+	 * @since    1.0.0
+	 */
+	
+	public function add_acf_metadata_after_wpallimport($post_id) {
+    $cpt = get_post_type( $post_id );
+    $field_groups = $this->get_acf_field_groups_by_cpt($cpt);
+    foreach($field_groups as $fields) {
+      foreach($fields as $field) {
+        update_post_meta($post_id, '_'.$field['name'], $field['key']);
+      }
+    }
+  }        
+  	
+} 
