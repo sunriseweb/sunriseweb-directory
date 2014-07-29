@@ -309,6 +309,58 @@ class Sunrise_Directory {
 	public function filter_method_name() {
 		// @TODO: Define your filter hook callback here
 	}
+	
+	/**
+	 * Show list of Directory Orgs
+	 * with ability to drill-down.
+	 * 
+	* Accepts one attribute specifying the directory org slug to start at in the hierarchy:          
+	 *
+	 * @since    1.0.1
+	 */
+	public function directoryOrg_shortcode($atts, $content = null) {
+    $result = "";
+    wp_enqueue_script( 'directory-org-shortcode-script', plugins_url( 'assets/js/directory_org_shortcode.js', __FILE__ ), array( 'jquery' ), self::VERSION ); 
+  	extract(shortcode_atts(array(
+  		"org" => ''
+  	), $atts));
+  	
+  	$termID = 0; 
+    //Use slug to get term id
+    if($org != "") {
+      $termArray = get_terms( 'directory', 'slug='.$org.'&hide_empty=0' );
+      foreach($termArray as $term) {
+        $termID = $term->term_id;
+      }
+  //     $termID = $org;
+    }
+    //Load Walker_Directory class
+    require_once( plugin_dir_path( __FILE__ ) . 'includes/directoryWalker.php' );
+    
+    $result .= '<ul id="directoryList" class="post entry">';
+    $args = array(
+      'orderby'            => 'term_order',
+      'order'              => 'ASC',
+      'style'              => 'list',
+      'show_count'         => 1,
+      'hide_empty'         => 0,
+      'use_desc_for_title' => 0,
+      'child_of'           => $termID,
+      'hierarchical'       => true,
+      'title_li'           => null,
+      'show_option_none'   => __('No Directory Orgs'),
+      'number'             => NULL,
+      'echo'               => 0,
+      'depth'              => 0,
+      'current_category'   => 0,
+      'pad_counts'         => 1,
+  //     'peopleByDirectory'  => $personCount,
+      'taxonomy'           => 'directory');
+    $args['walker'] = new Walker_Directory; 
+    $result .= wp_list_categories($args);
+    $result .= '</ul>';
+  	return $result;
+  }
 
   /**
 	 *  Displays people metadata in the single CPT content 
@@ -351,31 +403,12 @@ class Sunrise_Directory {
         $content .= $this->ats($address_line_2, '<br />');
         $content .= $this->ats( $this->trimCommaSpace($this->ats($city, ', ').$province), '<br />' );
         $content .= $this->ats($postal_code,'<br />');
-        $content .= $this->ats( $this->trimCommaSpace( $this->ats($email,', ').$second_email ), '<br />' );
-        //trimCommaSpace
+        $content .= $this->ats( $this->trimCommaSpace( $this->ats( antispambot($email),', '). antispambot($second_email) ), '<br />' );
         $content .= $this->ats( $this->trimCommaSpace( $this->ats($home_phone, ', ') . $this->ats($work_phone, ', ') . $fax_number ), '<br />' );
         //Add in person's Directory Orgs
         
         $content .= '</div> <!-- end person -->';
-        
-//         $acf_field_groups = acf_get_field_groups();
-//         foreach($acf_field_groups as $acf_field_group) {
-//           foreach($acf_field_group['location'] as $group_locations) {
-//             foreach($group_locations as $rule) {
-// 
-//                 if($rule['param'] == 'post_type' && $rule['operator'] == '==' && $rule['value'] == 'people') {
-//                 
-//                   print_r(acf_get_fields( $acf_field_group ));
-// //                     print_r($acf_field_group);
-//                               
-//                 }
-// 
-//             }
-//             
-//           }
-//             
-//         }
-        
+
     }
 
     return $content;
@@ -405,18 +438,18 @@ class Sunrise_Directory {
         	'show_admin_column' => false,
         	'labels' => 
               array (
-                'search_items' => 'Directory Org.',
-                'popular_items' => '',
-                'all_items' => '',
-                'parent_item' => '',
+                'search_items' => 'Directory Orgs',
+                'popular_items' => 'Popular Directory Orgs',
+                'all_items' => 'Directory Orgs',
+                'parent_item' => 'Parent Directory Org',
                 'parent_item_colon' => '',
-                'edit_item' => '',
-                'update_item' => '',
-                'add_new_item' => '',
-                'new_item_name' => '',
+                'edit_item' => 'Edit Directory Org',
+                'update_item' => 'Update Directory Org',
+                'add_new_item' => 'Add Directory Org',
+                'new_item_name' => 'New Directory Org',
                 'separate_items_with_commas' => '',
-                'add_or_remove_items' => '',
-                'choose_from_most_used' => '',
+                'add_or_remove_items' => 'Add / Remove Directory Orgs',
+                'choose_from_most_used' => 'Most Used Directory Orgs',
               )
         ) 
      );

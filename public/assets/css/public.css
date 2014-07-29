@@ -1,1 +1,5 @@
-/* This stylesheet is used to style the public-facing components of the plugin. */
+/* This stylesheet is used to style the public-facing components of the SunriseWeb Directory plugin. */
+#directoryList ul.children { display: none; }
+ul#directoryList, #directoryList ul { list-style-type: none; }
+.expandImage { background-image: url(../arrow-circle-sprite.png); background-position: 0 0; background-repeat: no-repeat;}
+.collapseImage { background-position: -18px 0; }

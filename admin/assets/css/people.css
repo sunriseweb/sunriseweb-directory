@@ -1,0 +1,12 @@
+/* Styling the directory checklist for People */
+#directorychecklist ul.children { 
+  display: none; 
+}
+
+#directoryBoxDiv .categorydiv div.tabs-panel, 
+#directoryBoxDiv .customlinkdiv div.tabs-panel, 
+#directoryBoxDiv .posttypediv div.tabs-panel, 
+#directoryBoxDiv .taxonomydiv div.tabs-panel, 
+#directoryBoxDiv #linkcategorydiv div.tabs-panel { 
+  height: auto; 
+}
