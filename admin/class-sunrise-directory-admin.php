@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name.
+ * Sunrise Directory
  *
  * @package   Sunrise_Directory_Admin
  * @author    Brad Trivers <brad@sunriseweb.ca>
@@ -194,13 +194,13 @@ class Sunrise_Directory_Admin {
 		 * - Change 'manage_options' to the capability you see fit
 		 *   For reference: http://codex.wordpress.org/Roles_and_Capabilities
 		 */
-		$this->plugin_screen_hook_suffix = add_options_page(
-			__( 'Sunrise Directory', $this->plugin_slug ),
-			__( 'Sunrise Directory', $this->plugin_slug ),
-			'manage_options',
-			$this->plugin_slug,
-			array( $this, 'display_plugin_admin_page' )
-		);
+// 		$this->plugin_screen_hook_suffix = add_options_page(
+// 			__( 'Sunrise Directory', $this->plugin_slug ),
+// 			__( 'Sunrise Directory', $this->plugin_slug ),
+// 			'manage_options',
+// 			$this->plugin_slug,
+// 			array( $this, 'display_plugin_admin_page' )
+// 		);
 
 	}
 

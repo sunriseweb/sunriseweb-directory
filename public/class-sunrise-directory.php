@@ -83,8 +83,14 @@ class Sunrise_Directory {
     /* Add extra ACF metadata after WP All Import saves a post */
     add_action( 'pmxi_saved_post', array( $this, 'add_acf_metadata_after_wpallimport' ), 10, 1 );
     
+    /* Change main loop for Directory Org taxonomy archive pages based on DisplayType */
+    add_action( 'pre_get_posts', array( $this, 'modify_directory_org_archive_loop' ) );
+    
     /* Add people metadata to single person display post content */
-    add_filter( 'the_content', array( $this, 'sd_person_content' ) );
+    add_filter( 'the_content', array( $this, 'person_content' ) );
+    
+    /* Filter template used for Directory taxonomy */
+    add_filter( 'template_include', array( $this, 'custom_templates' ) );
     
 	}
 
@@ -311,6 +317,75 @@ class Sunrise_Directory {
 	}
 	
 	/**
+	 * Use pre_get_posts to modify Directory Org taxonomy archive pages
+	 * 	 
+	 * @since    1.0.1
+	 */
+	public function modify_directory_org_archive_loop( $query ) {
+
+	  if ( $query->is_tax( 'directory' ) && $query->is_main_query() ) { //need to also check that post_type is "people"?
+	  
+	      //Get Directory Org metadata setting - display_type
+	      $directory_term_id = get_queried_object()->term_id;
+	      $displayType = get_field('display_type', 'directory_'.$directory_term_id);
+	      
+	      //post_type=people&nopaging=true&posts_per_page=-1&orderby=title&order=ASC&conferences=".get_current_conference()
+	      $query->set( 'orderby', 'title' );
+	      $query->set( 'order', 'ASC' );
+	      $query->set( 'conferences', $this->get_current_conference() );
+	      
+	      if($displayType == 'PagedList') {
+	        $query->set( 'posts_per_page', 25 );
+        } else {
+          $query->set( 'posts_per_page', -1 );
+        }
+    }	
+		
+	}
+	
+	/**
+	 * Get Conference Year option for use in queries, etc.
+	 * 	 
+	 * @since    1.0.1
+	 */
+	public function get_current_conference() {
+    $conferenceYear = get_field('conference_year','option');
+    $currentYear = date('Y');
+    $currentMonth = date('n');
+    //Change this so set in theme options
+    if($currentMonth >= 1 && $currentMonth <=11 ) {
+      $altConfYear = $currentYear-1;
+    } else {
+      $altConfYear = $currentYear;
+    }
+    
+    if(trim($conferenceYear) == "") {
+      return $altConfYear;
+    } else {
+      return $conferenceYear;
+    }
+  }
+ 
+	/**
+	 * Filter template used for custom taxonomies and post types.
+	 *  - Directory taxonomy	 
+	 *
+	 * @since    1.0.1
+	 */
+	public function custom_templates($template) {
+	
+  	if( is_tax( 'directory' ) ) {
+  	   if ( locate_template( 'taxonomy-directory.php' ) == '' ) {
+         // If neither the child nor parent theme have overridden the template,
+         // we load the template from the 'templates' sub-directory of the plugin
+         $template = plugin_dir_path( __FILE__ ) .'templates/taxonomy-directory.php';
+       }          
+  	}
+   
+    return $template;
+	}
+	
+	/**
 	 * Show list of Directory Orgs
 	 * with ability to drill-down.
 	 * 
@@ -367,7 +442,7 @@ class Sunrise_Directory {
 	 *
 	 * @since    1.0.0
 	 */
-	public function sd_person_content($content) {
+	public function person_content($content) {
 		if (is_singular('people') && in_the_loop()) {
         //Get Person metadata
         $fields = get_fields();
@@ -397,21 +472,52 @@ class Sunrise_Directory {
            $content .= '</a>';
         }
         
-        $content .= '<h2 class="personTitle">'.$this->ats($salutation).$this->ats($first_name).$this->ats($middle_initial).$last_name.'</h2>';
-        $content .= $this->ats( $this->trimCommaSpace( $this->ats($member_type, ", ").$this->ats($designation, ", ").$ministry_status ), '<br />');
-        $content .= $this->ats($address_line_1, '<br />');
-        $content .= $this->ats($address_line_2, '<br />');
-        $content .= $this->ats( $this->trimCommaSpace($this->ats($city, ', ').$province), '<br />' );
-        $content .= $this->ats($postal_code,'<br />');
-        $content .= $this->ats( $this->trimCommaSpace( $this->ats( antispambot($email),', '). antispambot($second_email) ), '<br />' );
-        $content .= $this->ats( $this->trimCommaSpace( $this->ats($home_phone, ', ') . $this->ats($work_phone, ', ') . $fax_number ), '<br />' );
+        $content .= '<h2 class="personTitle">'.sd_ats($salutation).sd_ats($first_name).sd_ats($middle_initial).$last_name.'</h2>';
+        $content .= sd_ats( trimCommaSpace( sd_ats($member_type, ", ").sd_ats($designation, ", ").$ministry_status ), '<br />');
+        $content .= sd_ats($address_line_1, '<br />');
+        $content .= sd_ats($address_line_2, '<br />');
+        $content .= sd_ats( trimCommaSpace(sd_ats($city, ', ').$province), '<br />' );
+        $content .= sd_ats($postal_code,'<br />');
+        $content .= sd_ats( trimCommaSpace( sd_ats( antispambot($email),', '). antispambot($second_email) ), '<br />' );
+        $content .= sd_ats( trimCommaSpace( sd_ats($home_phone, ', ') . sd_ats($work_phone, ', ') . $fax_number ), '<br />' );
         //Add in person's Directory Orgs
         
         $content .= '</div> <!-- end person -->';
 
     }
-
+    
     return $content;
+	}
+	
+	/**
+	 *  Builds Person data for short display.
+	 *
+	 * @since    1.0.0
+	 */
+	public function display_person_short($personid) {
+	   $result = array();
+	   $fields_to_retrieve = array( 'salutation', 'first_name', 'middle_initial', 'last_name', 'email', 'second_email', 'home_phone', 'work_phone', 'address_line_1', 'address_line_2', 'city', 'province', 'postal_code' );
+     foreach($fields_to_retrieve as $fieldname) {
+        $$fieldname = trim( get_field($fieldname, $personid) );
+     }
+	   
+	   $infotohide = trim(get_field('infotohide', $personid));
+	   if($infotohide != "" ) { //if some fields need to be hidden and user is not logged in
+      $hiddenfields = str_replace(', ', ',',$infotohide);
+      $hiddenfields = explode(',',$infotohide);
+      foreach($hiddenfields as $findex => $hiddenfieldname ) {
+        $trimmed = trim($hiddenfieldname);
+        $$trimmed = ""; //clear out the $$field_name = $value set (if any) 
+        $result[$trimmed] = ""; 
+      }    
+    }
+	   
+	   $result['fullname'] = sd_ats($salutation).sd_ats($first_name).$last_name; //sd_ats($middle_initial)
+	   $result['email'] = trimCommaSpace( sd_ats( antispambot($email),', '). antispambot($second_email) );
+	   $result['phone'] = trimCommaSpace( sd_ats($home_phone, ', ') . sd_ats($work_phone, ', ') . $fax_number );
+	   $result['address'] = trimCommaSpace( sd_ats($address_line_1, ', ') . $address_line_2 );
+      
+	   return $result;
 	}
 
   /**
@@ -557,29 +663,6 @@ class Sunrise_Directory {
       );	
 	}
 	
-  /**
-	 * This function trims a trailing ", " from a string         	 
-	 *
-	 * @since    1.0.0
-	 */
-	public function trimCommaSpace($instring) {
-    if(substr($instring,strlen($instring)-2,strlen($instring)) == ', ') {
-        $instring = substr($instring,0,strlen($instring)-2);  
-    }
-    return $instring;
-  }
-  
-  /**
-	 * This function adds a trailing space if input string not empty - else returns ''         	 
-	 *
-	 * @since    1.0.0
-	 */
-	public function ats($instring, $trailer = " ") {
-    if( !empty($instring) ) 
-      $instring .= $trailer;
-    return $instring;
-  }
-
   /**      
    * Returns an array of field groups with fields for the passed CPT, where field group ACF location rule of "post_type == CPT" exists.
    *  - each field group points at an array of its fields, in turn pointed at an array of that field's detailed information:

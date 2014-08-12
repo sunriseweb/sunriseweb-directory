@@ -29,7 +29,7 @@ class directoryDisplayWalker extends Walker {
 			return;
 		$indent = str_repeat("\t", $depth);
 		//Check if directory orgs should be collapsed or expanded by default
-	  if( $args['expandDirectory'] == "Y" || $args['expandDirectory'] == "") {
+	  if( $args['expandDirectory'] == "Y" || $args['expandDirectory'] == "" || $args['expandDirectory'] == 1) {
       $expandClass = 'directoryListExpand';
     } else {
       $expandClass = 'directoryListCollapse';
@@ -63,37 +63,39 @@ class directoryDisplayWalker extends Walker {
 	 * @param array $args
 	 */
 	function start_el(&$output, $category, $depth, $args) {
+	  $image_path = plugins_url( 'assets/' , dirname(__FILE__) ); //Sunrise_Directory::get_plugin_slug
 		extract($args);
 // 		echo "<br />";
 		$cat_name = esc_attr( $category->name );
 		$cat_name = apply_filters( 'list_cats', $cat_name, $category );
 		$children = get_term_children($category->term_id, $category->taxonomy);
 		$numPeopleInOrg = count($peopleByDirectory[$category->term_id]);
-		//Parse description for current directory org to get directory settings it may contains (e.g. topHTML, DisplayType, etc.) 
-    $lines = explode("|".chr(13).chr(10),$category->description);
-    foreach($lines as $lineindex => $settingString) {
-      $thisSetting = explode(":=",$settingString);
-      if(trim($thisSetting[0]) != "") {
-        $directorySettings[$thisSetting[0]] = $thisSetting[1];
-      }
-    }    
+		
+    //Parse description for current directory org to get directory settings it may contains (e.g. topHTML, DisplayType, etc.)
+//     $directorySettings = get_fields('directory_'.$directory_term_id); //results in array with $field_name => $value - see http://www.advancedcustomfields.com/resources/functions/get_fields/ 
+//     $lines = explode("|".chr(13).chr(10),$category->description);
+//     foreach($lines as $lineindex => $settingString) {
+//       $thisSetting = explode(":=",$settingString);
+//       if(trim($thisSetting[0]) != "") {
+//         $directorySettings[$thisSetting[0]] = $thisSetting[1];
+//       }
+//     }    
     
 		//Create list of people in directory			
     if($numPeopleInOrg > 0) {
     
       $categoryPeople = '<ul class="peopleInDirectoryOrg">';
       foreach($peopleByDirectory[$category->term_id] as $personID => $personInfo) {
-       $personMeta = get_person_metadata($personID);
-       $personDisplay = '<a href="/' . $personInfo->post_name . '">' . $personMeta['plainPersonName'] .'<br />';
-       $personDisplay .= $personMeta['personEmail'] .', '. $personMeta['personPhone'] .'<br />';
-       $personDisplay .= $personMeta['fullAddress'].'</a>';
-//        $personDisplay = $personMeta['streetaddress'] .' '. $personMeta['addressline2'] .' '.$personMeta['cityProvince'] .' '.$personMeta['postalcode']. '</a>';
-//            $personDisplay = '<a href="/' . $personInfo->post_name . '">' . $personInfo->post_title . '</a>';
+       
+       $personMeta = Sunrise_Directory::display_person_short($personID);
+       $personDisplay = '<a href="/' . $personInfo->post_name . '">' . $personMeta['fullname'] .'<br />';
+       $personDisplay .= $personMeta['email'] .', '. $personMeta['phone'] .'<br />';
+       $personDisplay .= $personMeta['address'].'</a>';
     	 $categoryPeople .= '<li>'.$personDisplay.'</li>';
     	}
     	$categoryPeople .= '</ul>';
 
-    } elseif (trim($directorySettings['topHTML']) == "") {
+    } elseif (trim($directorySettings['additional_text']) == "") {
       $vacantString = " - Vacant";
     }
            	
@@ -109,44 +111,10 @@ class directoryDisplayWalker extends Walker {
     		$link .= '<span class="directoryName">'.$cat_name.'</span></a>';
     }
     
-    if(trim($directorySettings['topHTML']) != "" ) {
-      $link .= "<p>".trim($directorySettings['topHTML'])."</p>";
+    if(trim($directorySettings['additional_text']) != "" ) {
+      $link .= "<p>".trim($directorySettings['additional_text'])."</p>";
     }
     
-    
-// 		if ( !empty($feed_image) || !empty($feed) ) {
-// 			$link .= ' ';
-// 
-// 			if ( empty($feed_image) )
-// 				$link .= '(';
-// 
-// 			$link .= '<a href="' . get_term_feed_link( $category->term_id, $category->taxonomy, $feed_type ) . '"';
-// 
-// 			if ( empty($feed) ) {
-// 				$alt = ' alt="' . sprintf(__( 'Feed for all People in %s' ), $cat_name ) . '"';
-// 			} else {
-// 				$title = ' title="' . $feed . '"';
-// 				$alt = ' alt="' . $feed . '"';
-// 				$name = $feed;
-// 				$link .= $title;
-// 			}
-// 
-// 			$link .= '>';
-// 
-// 			if ( empty($feed_image) )
-// 				$link .= $name;
-// 			else
-// 				$link .= "<img src='$feed_image'$alt$title" . ' />';
-// 
-// 			$link .= '</a>';
-// 
-// 			if ( empty($feed_image) )
-// 				$link .= ')';
-// 		}
-
-// 		if ( !empty($show_count) )
-// 			$link .= ' (' . intval($category->count) . ')';
-
 		if ( !empty($show_date) )
 			$link .= ' ' . gmdate('Y-m-d', $category->last_update_timestamp);
 
@@ -170,12 +138,12 @@ class directoryDisplayWalker extends Walker {
         } else {
           $expandClass = 'expandImage';
         }
-        $output .= '><a href="#" class="directoryExpand" title="Click to Expand / Collapse"><img class="'.$expandClass.'" src="'.get_stylesheet_directory_uri().'/images/trans-arrow-circle.png" /></a>&nbsp '.$link;
+        $output .= '><a href="#" class="directoryExpand" title="Click to Expand / Collapse"><img class="'.$expandClass.'" src="'.$image_path.'trans-arrow-circle.png" /></a>&nbsp '.$link;
         $output .= $categoryPeople;
 
         
       } else {
-        $output .= '><img class="directoryBottom" src="'.get_stylesheet_directory_uri().'/images/trans-arrow-circle.png" />&nbsp'.$link;
+        $output .= '><img class="directoryBottom" src="'.$image_path.'trans-arrow-circle.png" />&nbsp'.$link;
         $output .= $categoryPeople;
       }
 		} else {

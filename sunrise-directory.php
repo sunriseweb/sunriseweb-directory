@@ -63,4 +63,47 @@ if ( is_admin() ) {
 
 }
 
+//Add ACF options page - requireds Advanced Custom Fields plugin
+if( function_exists('acf_add_options_page') ) {
+ 
+	acf_add_options_page(array(
+		'page_title' 	=> __( 'Sunrise Directory Settings', 'sunrise-directory' ),
+		'menu_title'	=> __( 'Directory Settings', 'sunrise-directory' ),
+		'menu_slug' 	=>  'sunrise-directory',
+		'capability'	=> 'manage_options',
+		'redirect'		=> false
+	));
+ 
+}
+
+/*----------------------------------------------------------------------------*
+ * Functions and shortcodes
+ *----------------------------------------------------------------------------*/
 add_shortcode('directoryOrg', 'Sunrise_Directory::directoryOrg_shortcode');
+
+/**
+ * This function trims a trailing ", " from a string         	 
+ *
+ * @since    1.0.0
+ */
+if( !function_exists('trimCommaSpace') ) {
+  function trimCommaSpace($instring) {
+    if(substr($instring,strlen($instring)-2,strlen($instring)) == ', ') {
+        $instring = substr($instring,0,strlen($instring)-2);  
+    }
+    return $instring;
+  }
+}
+  
+/**
+ * This function adds a trailing space if input string not empty - else returns ''         	 
+ *
+ * @since    1.0.0
+ */
+if( !function_exists('sd_ats') ) {
+  function sd_ats($instring, $trailer = " ") {
+    if( !empty($instring) ) 
+      $instring .= $trailer;
+    return $instring;
+  }
+}
