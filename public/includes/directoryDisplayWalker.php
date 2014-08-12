@@ -29,7 +29,7 @@ class directoryDisplayWalker extends Walker {
 			return;
 		$indent = str_repeat("\t", $depth);
 		//Check if directory orgs should be collapsed or expanded by default
-	  if( $args['expandDirectory'] == "Y" || $args['expandDirectory'] == "" || $args['expandDirectory'] == 1) {
+	  if( $args['expandDirectory'] == "Y" || $args['expandDirectory'] == 1) {
       $expandClass = 'directoryListExpand';
     } else {
       $expandClass = 'directoryListCollapse';
@@ -128,7 +128,7 @@ class directoryDisplayWalker extends Walker {
 			
 			if(count($children) > 0) {
 			  //Check if directory orgs should be collapsed or expanded by default
-			  if( $expandDirectory == "Y" || $expandDirectory == "") {
+			  if( $expandDirectory == "Y" || $expandDirectory == 1) {
           $expandClass = 'expandImage collapseImage';
         } else {
           $expandClass = 'expandImage';

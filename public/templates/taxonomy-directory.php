@@ -4,27 +4,13 @@
 	<div class="container">
 		<div id="content-area" class="clearfix">
 			<div id="left-area">
+    
+    	 <h1><?php echo get_queried_object()->name; ?></h1>
+    	 
 		<?php
 		  $directory_term_id = get_queried_object()->term_id;
 		  $displayType = get_field('display_type', 'directory_'.$directory_term_id);
-		  
-// 		  global $wp_query; 
-//       print_r($wp_query);
-		  
-// 		  echo "directory_term_id = $directory_term_id<br />";
-// 		  //Get directory metadata (settings)
-// 		  $directorySettings = get_fields('directory_'.$directory_term_id); //results in array with $field_name => $value - see http://www.advancedcustomfields.com/resources/functions/get_fields/
-// 		  $expandDirectory = $directorySettings['expand_directory'];
-// 		  $displayType = $directorySettings['display_type'];      
-// 		  foreach($directorySettings as $field_name => $value) {
-//         echo "$field_name = $value<br />";
-//       }
-      
-             
-//       if($displayType != 'PagedList') { //must be blank or DrillDown
-//         //Modify main query loop to include all Directory Orgs - not paged
-//         
-//       }
+		  $expandDirectory = get_field('expand_directory', 'directory_'.$directory_term_id);
 
       //NOTE: Main loop is modified using the pre_get_post filter prior to page load - see modify_directory_org_archive_loop function in Sunrise Directory plugin
 			if ( have_posts() ) :
@@ -35,7 +21,9 @@
               $directoryOrgs = get_the_terms($post->ID, 'directory');
               if ( $directoryOrgs && ! is_wp_error( $directoryOrgs ) ) {     
               	foreach ( $directoryOrgs as $directoryOrg ) {
-              	  $peopleByDirectory[$directoryOrg->term_id][$post->ID] = $post; 
+              	  $children = get_term_children($directoryOrg->term_id, 'directory'); // get children
+              	  if(sizeof($children)==0)
+              	     $peopleByDirectory[$directoryOrg->term_id][$post->ID] = $post; 
               	}
               }
               
@@ -45,17 +33,10 @@
     
     						<h2><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
     				
-    						<?php 
-//                     $personMeta = Sunrise_Directory::display_person_short($personID);
-//                     $personDisplay = '<a href="/' . $personInfo->post_name . '">' . $personMeta['fullname'] .'<br />';
-//                     $personDisplay .= $personMeta['email'] .', '. $personMeta['phone'] .'<br />';
-//                     $personDisplay .= $personMeta['address'].'</a>';
-//                     $categoryPeople .= '<li>'.$personDisplay.'</li>'; 
-                      $personMeta = Sunrise_Directory::display_person_long($post->ID);
-                      echo $personMeta;
+    						<?php
+                      echo Sunrise_Directory::display_person_short($post->ID);
                 ?>
     						
-    
     					</article> <!-- .et_pb_post -->
     			<?php
             }
