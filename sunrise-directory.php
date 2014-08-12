@@ -101,9 +101,9 @@ if( !function_exists('trimCommaSpace') ) {
  * @since    1.0.0
  */
 if( !function_exists('sd_ats') ) {
-  function sd_ats($instring, $trailer = " ") {
+  function sd_ats($instring, $trailer = " ", $starter = "") {
     if( !empty($instring) ) 
-      $instring .= $trailer;
-    return $instring;
+      $result = $starter . $instring . $trailer;
+    return $result;
   }
 }

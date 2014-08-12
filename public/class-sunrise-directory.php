@@ -84,7 +84,7 @@ class Sunrise_Directory {
     add_action( 'pmxi_saved_post', array( $this, 'add_acf_metadata_after_wpallimport' ), 10, 1 );
     
     /* Change main loop for Directory Org taxonomy archive pages based on DisplayType */
-    add_action( 'pre_get_posts', array( $this, 'modify_directory_org_archive_loop' ) );
+    add_action( 'pre_get_posts', array( $this, 'modify_directory_org_archive_loop' ), 100, 1 );
     
     /* Add people metadata to single person display post content */
     add_filter( 'the_content', array( $this, 'person_content' ) );
@@ -322,15 +322,19 @@ class Sunrise_Directory {
 	 * @since    1.0.1
 	 */
 	public function modify_directory_org_archive_loop( $query ) {
-
-	  if ( $query->is_tax( 'directory' ) && $query->is_main_query() ) { //need to also check that post_type is "people"?
-	  
+    $taxonomy = get_queried_object()->taxonomy;
+//     echo "<h1>taxonomy=".$taxonomy."</h1>";
+//     print_r(get_queried_object());
+	  if ( $taxonomy == 'directory' && $query->is_main_query() ) { //need to also check that post_type is "people"?
+// 	      echo "<h1>taxonomy=".$taxonomy."</h1>";
 	      //Get Directory Org metadata setting - display_type
 	      $directory_term_id = get_queried_object()->term_id;
 	      $displayType = get_field('display_type', 'directory_'.$directory_term_id);
+// 	      echo "<h1>displayType = $displayType; directory_term_id = $directory_term_id</h1>";
 	      
 	      //post_type=people&nopaging=true&posts_per_page=-1&orderby=title&order=ASC&conferences=".get_current_conference()
-	      $query->set( 'orderby', 'title' );
+	      $query->set( 'post_type', 'people' );
+        $query->set( 'orderby', 'title' );
 	      $query->set( 'order', 'ASC' );
 	      $query->set( 'conferences', $this->get_current_conference() );
 	      
@@ -338,7 +342,9 @@ class Sunrise_Directory {
 	        $query->set( 'posts_per_page', 25 );
         } else {
           $query->set( 'posts_per_page', -1 );
+          $query->set( 'nopaging', true );
         }
+
     }	
 		
 	}
@@ -490,12 +496,58 @@ class Sunrise_Directory {
 	}
 	
 	/**
+	 *  Builds Person data for long display.
+	 *
+	 * @since    1.0.0
+	 */
+	public function display_person_long($personid) {
+    $result = '';
+    $fields_to_retrieve = array( 'salutation', 'first_name', 'middle_initial', 'last_name', 'email', 'second_email', 'home_phone', 'work_phone', 'address_line_1', 'address_line_2', 'city', 'province', 'postal_code' );
+    foreach($fields_to_retrieve as $fieldname) {
+      $$fieldname = trim( get_field($fieldname, $personid) );
+    }
+    
+    $infotohide = trim(get_field('infotohide', $personid));
+    if($infotohide != "" ) { //if some fields need to be hidden and user is not logged in
+      $hiddenfields = str_replace(', ', ',',$infotohide);
+      $hiddenfields = explode(',',$infotohide);
+      foreach($hiddenfields as $findex => $hiddenfieldname ) {
+        $trimmed = trim($hiddenfieldname);
+        $$trimmed = ""; //clear out the $$field_name = $value set (if any) 
+      }    
+    }
+     
+    //Display Person metadata
+    $result .= '<div class="personSummary">';
+    
+    if ( has_post_thumbnail()) {
+       $large_image_url = wp_get_attachment_image_src( get_post_thumbnail_id($post->ID), 'large');
+       $result .= '<a href="' . $large_image_url[0] . '" alt="' . the_title_attribute('echo=0') . '" title="' . the_title_attribute('echo=0') . '" >';
+       $result .= get_the_post_thumbnail($post->ID, array(250,250), array('class' => 'alignleft')); 
+       $result .= '</a>';
+    }
+    
+//     $result .= '<h2 class="personTitle">'.sd_ats($salutation).sd_ats($first_name).sd_ats($middle_initial).$last_name.'</h2>';
+    $result .= sd_ats( trimCommaSpace( sd_ats($member_type, ", ").sd_ats($designation, ", ").$ministry_status ), '<br />');
+    $result .= sd_ats($address_line_1, '<br />');
+    $result .= sd_ats($address_line_2, '<br />');
+    $result .= sd_ats( trimCommaSpace(sd_ats($city, ', ').$province), '<br />' );
+    $result .= sd_ats($postal_code,'<br />');
+    $result .= sd_ats( trimCommaSpace( sd_ats( antispambot($email),', '). antispambot($second_email) ), '<br />' );
+    $result .= sd_ats( trimCommaSpace( sd_ats($home_phone, ', ') . sd_ats($work_phone, ', ') . $fax_number ), '<br />' );
+    
+    $result .= '</div> <!-- end person -->';
+      
+    return $result;
+	}
+	
+  	/**
 	 *  Builds Person data for short display.
 	 *
 	 * @since    1.0.0
 	 */
-	public function display_person_short($personid) {
-	   $result = array();
+	 public function display_person_short($personid) {
+	   $result = '';
 	   $fields_to_retrieve = array( 'salutation', 'first_name', 'middle_initial', 'last_name', 'email', 'second_email', 'home_phone', 'work_phone', 'address_line_1', 'address_line_2', 'city', 'province', 'postal_code' );
      foreach($fields_to_retrieve as $fieldname) {
         $$fieldname = trim( get_field($fieldname, $personid) );
@@ -508,14 +560,12 @@ class Sunrise_Directory {
       foreach($hiddenfields as $findex => $hiddenfieldname ) {
         $trimmed = trim($hiddenfieldname);
         $$trimmed = ""; //clear out the $$field_name = $value set (if any) 
-        $result[$trimmed] = ""; 
       }    
     }
-	   
-	   $result['fullname'] = sd_ats($salutation).sd_ats($first_name).$last_name; //sd_ats($middle_initial)
-	   $result['email'] = trimCommaSpace( sd_ats( antispambot($email),', '). antispambot($second_email) );
-	   $result['phone'] = trimCommaSpace( sd_ats($home_phone, ', ') . sd_ats($work_phone, ', ') . $fax_number );
-	   $result['address'] = trimCommaSpace( sd_ats($address_line_1, ', ') . $address_line_2 );
+	   $displayname = sd_ats($salutation).sd_ats($first_name).$last_name; //sd_ats($middle_initial)
+	   $result .= sd_ats( '<a class="plainPersonName" href="'.get_permalink().'" alt="'.$displayname.'">' . $displayname . '</a>', '<br />' ); 
+	   $result .= sd_ats( trimCommaSpace( sd_ats( antispambot($email),'</a>, ', '<a href="mailto:'.antispambot($email).'">') . sd_ats( antispambot($second_email),'</a>, ', '<a href="mailto:'.antispambot($second_email).'">') . sd_ats($home_phone, ', ') . sd_ats($work_phone, ', ') . $fax_number ) , '<br />' );
+	   $result .= trimCommaSpace( sd_ats($address_line_1, ', ') . sd_ats($address_line_2, ', ') . sd_ats($city, ', ') . sd_ats($province, ', ') . $postal_code );
       
 	   return $result;
 	}

@@ -1,0 +1,20 @@
+/*
+ * Enqueued in the taxonomy-directory.php custom template
+ * for displaying Directory Org listings (drilldown and pagelist)
+ * correctly.
+ */
+
+#directoryListCustom ul.children { margin-left: 20px; }
+.directoryListExpand { display: block; }
+.directoryListCollapse { display: none; }
+ul#directoryListCustom { list-style-type: none; width: 600px; }
+#directoryListCustom ul { width: 600px; }
+ul#directoryListCustom li { padding: 2px 0 0 8px; background: none; }
+#directoryListCustom ul li { padding: 0px;}
+#directoryListCustom p { margin-left: 40px;}
+/*#directoryListCustom a { color: #BB8C00; }*/
+.directoryName { font-size: 18px; }
+.peopleInDirectoryOrg a { color: #517BA5; }
+.peopleInDirectoryOrg a.plainPersonName { font-size: 18px; }
+ul.peopleInDirectoryOrg { margin-left: 40px; list-style: none; }
+#directoryListCustom ul.peopleInDirectoryOrg li { padding-top: 5px;  }    

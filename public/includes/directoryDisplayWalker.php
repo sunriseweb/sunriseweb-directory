@@ -86,12 +86,7 @@ class directoryDisplayWalker extends Walker {
     
       $categoryPeople = '<ul class="peopleInDirectoryOrg">';
       foreach($peopleByDirectory[$category->term_id] as $personID => $personInfo) {
-       
-       $personMeta = Sunrise_Directory::display_person_short($personID);
-       $personDisplay = '<a href="/' . $personInfo->post_name . '">' . $personMeta['fullname'] .'<br />';
-       $personDisplay .= $personMeta['email'] .', '. $personMeta['phone'] .'<br />';
-       $personDisplay .= $personMeta['address'].'</a>';
-    	 $categoryPeople .= '<li>'.$personDisplay.'</li>';
+    	 $categoryPeople .= '<li>'.Sunrise_Directory::display_person_short($personID).'</li>';
     	}
     	$categoryPeople .= '</ul>';
 
