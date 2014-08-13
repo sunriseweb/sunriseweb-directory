@@ -13,8 +13,8 @@ ul#directoryListCustom li { padding: 2px 0 0 8px; background: none; }
 #directoryListCustom ul li { padding: 0px;}
 #directoryListCustom p { margin-left: 40px;}
 /*#directoryListCustom a { color: #BB8C00; }*/
-.directoryName { font-size: 18px; }
+.directoryName { font-size: 18px; font-weight: 700; }
 .peopleInDirectoryOrg a { color: #517BA5; }
-.peopleInDirectoryOrg a.plainPersonName { font-size: 18px; }
+.peopleInDirectoryOrg a.plainPersonName { font-size: 18px; font-weight: 700; }
 ul.peopleInDirectoryOrg { margin-left: 40px; list-style: none; }
 #directoryListCustom ul.peopleInDirectoryOrg li { padding-top: 5px;  }    

@@ -9,13 +9,14 @@
     	 
 		<?php
 		  $directory_term_id = get_queried_object()->term_id;
+		  $this_orgs_children = get_term_children($directory_term_id, 'directory');
 		  $displayType = get_field('display_type', 'directory_'.$directory_term_id);
 		  $expandDirectory = get_field('expand_directory', 'directory_'.$directory_term_id);
 
       //NOTE: Main loop is modified using the pre_get_post filter prior to page load - see modify_directory_org_archive_loop function in Sunrise Directory plugin
 			if ( have_posts() ) :
 				while ( have_posts() ) : the_post();
-				    if($displayType != 'PagedList') { //must be blank or DrillDown
+				    if($displayType != 'PagedList' && sizeof( $this_orgs_children ) != 0) { //must be blank or DrillDown
     				  
               //Create array of posts by directoryOrg
               $directoryOrgs = get_the_terms($post->ID, 'directory');
@@ -31,10 +32,19 @@
           ?>
     					<article id="post-<?php the_ID(); ?>" <?php post_class( 'et_pb_post' ); ?>>
     
+                <?php
+						      if ( has_post_thumbnail()) {
+                     $large_image_url = wp_get_attachment_image_src( get_post_thumbnail_id($post->ID), 'large');
+                     echo '<a href="' . $large_image_url[0] . '" alt="' . the_title_attribute('echo=0') . '" title="' . the_title_attribute('echo=0') . '" >';
+                     echo get_the_post_thumbnail($post->ID, 'medium', array('class' => 'alignleft')); 
+                     echo '</a>';
+                  }
+                ?>
+                
     						<h2><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
     				
     						<?php
-                      echo Sunrise_Directory::display_person_short($post->ID);
+                  echo Sunrise_Directory::display_person_short($post->ID);
                 ?>
     						
     					</article> <!-- .et_pb_post -->
@@ -42,7 +52,7 @@
             }
 					endwhile;
 					
-					if($displayType != 'PagedList') { //display DrillDown format
+					if($displayType != 'PagedList' && sizeof( $this_orgs_children ) != 0 ) { //display DrillDown format
 					  wp_enqueue_script( 'directory-org-shortcode-script', plugins_url( '../assets/js/directory_org_shortcode.js', __FILE__ ), array( 'jquery' ), Sunrise_Directory::VERSION );
 					  wp_enqueue_style( 'directory-org-styles', plugins_url( '../assets/css/directory_orgs.css', __FILE__ ), Sunrise_Directory::VERSION );
       			?>

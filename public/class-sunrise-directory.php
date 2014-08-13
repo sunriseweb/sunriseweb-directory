@@ -84,7 +84,7 @@ class Sunrise_Directory {
     add_action( 'pmxi_saved_post', array( $this, 'add_acf_metadata_after_wpallimport' ), 10, 1 );
     
     /* Change main loop for Directory Org taxonomy archive pages based on DisplayType */
-    add_action( 'pre_get_posts', array( $this, 'modify_directory_org_archive_loop' ), 100, 1 );
+    add_action( 'pre_get_posts', array( $this, 'modify_archive_loop' ), 100, 1 );
     
     /* Add people metadata to single person display post content */
     add_filter( 'the_content', array( $this, 'person_content' ) );
@@ -317,14 +317,16 @@ class Sunrise_Directory {
 	}
 	
 	/**
-	 * Use pre_get_posts to modify Directory Org taxonomy archive pages
+	 * Use pre_get_posts to modify archive pages:
+	 *  - Directory Org taxonomy
+	 *  - People CPT   	 
 	 * 	 
 	 * @since    1.0.1
 	 */
-	public function modify_directory_org_archive_loop( $query ) {
-    $taxonomy = get_queried_object()->taxonomy;
+	public function modify_archive_loop( $query ) {
 
-	  if ( $taxonomy == 'directory' && $query->is_main_query() ) { //need to also check that post_type is "people"?
+    //Modify directory org archive loop
+	  if ( get_queried_object()->taxonomy == 'directory' && $query->is_main_query() ) { //need to also check that post_type is "people"?
 
 	      //Get Directory Org metadata setting - display_type
 	      $directory_term_id = get_queried_object()->term_id;
@@ -342,8 +344,19 @@ class Sunrise_Directory {
           $query->set( 'posts_per_page', -1 );
           $query->set( 'nopaging', true );
         }
-
-    }	
+        
+        return;
+    }
+    
+    //Modify people CPT archive loop
+	  if ( is_post_type_archive('people') && $query->query['post_type'] == 'people' && $query->is_main_query() ) {
+	      
+	      $query->set( 'orderby', 'title' );
+	      $query->set( 'order', 'ASC' );
+	      $query->set( 'posts_per_page', 50 );
+	      
+	      return;
+	  }
 		
 	}
 	
@@ -447,52 +460,28 @@ class Sunrise_Directory {
 	 * @since    1.0.0
 	 */
 	public function person_content($content) {
-		if (is_singular('people') && in_the_loop()) {
-        //Get Person metadata
-//         $fields = get_fields();
-//         if($fields) {          
-//           foreach($fields as $field_name => $value) {
-//             $$field_name = trim(str_replace("---", "", $value));
-//           }          
-//         }
-//         
-//         if(trim($infotohide) != "" ) { //if some fields need to be hidden and user is not logged in
-//           $hiddenfields = str_replace(', ', ',',$infotohide);
-//           $hiddenfields = explode(',',$infotohide);
-//           foreach($hiddenfields as $findex => $hiddenfieldname ) {
-//             $trimmed = trim($hiddenfieldname);
-//             $$trimmed = ""; //clear out the $$field_name = $value set (if any) 
-//             $result[$trimmed] = ""; 
-//           }    
-//         }
-//         
-//         //Display Person metadata
-        $content .= '<div class="personSummary">';
-//         
-//         if ( has_post_thumbnail()) {
-//            $large_image_url = wp_get_attachment_image_src( get_post_thumbnail_id($post->ID), 'large');
-//            $content .= '<a href="' . $large_image_url[0] . '" alt="' . the_title_attribute('echo=0') . '" title="' . the_title_attribute('echo=0') . '" >';
-//            $content .= get_the_post_thumbnail($post->ID, array(250,250), array('class' => 'alignleft')); 
-//            $content .= '</a>';
-//         }
-//         
-//         $content .= '<h2 class="personTitle">'.sd_ats($salutation).sd_ats($first_name).sd_ats($middle_initial).$last_name.'</h2>';
-//         $content .= sd_ats( trimCommaSpace( sd_ats($member_type, ", ").sd_ats($designation, ", ").$ministry_status ), '<br />');
-//         $content .= sd_ats($address_line_1, '<br />');
-//         $content .= sd_ats($address_line_2, '<br />');
-//         $content .= sd_ats( trimCommaSpace(sd_ats($city, ', ').$province), '<br />' );
-//         $content .= sd_ats($postal_code,'<br />');
-//         $content .= sd_ats( trimCommaSpace( sd_ats( antispambot($email),', '). antispambot($second_email) ), '<br />' );
-//         $content .= sd_ats( trimCommaSpace( sd_ats($home_phone, ', ') . sd_ats($work_phone, ', ') . $fax_number ), '<br />' );
+		if ( is_singular('people') && in_the_loop() ) {
 
-        //Add in person's Directory Orgs
+        $content .= '<div class="personSummary">';
         
         $content .= Sunrise_Directory::display_person_long($post->ID);
         
+        //Add in person's Directory Orgs
+        
         $content .= '</div> <!-- end person -->';
+        
+    } elseif ( is_post_type_archive('people') && in_the_loop() ) {
 
+        $content .= '<div class="personSummary">';
+        
+//         $content .= str_replace("<br />", " | ", Sunrise_Directory::display_person_short($post->ID) );
+        $content .= Sunrise_Directory::display_person_short($post->ID);
+        
+        //Add in person's Directory Orgs
+        
+        $content .= '</div> <!-- end person -->';
+        
     }
-    
     return $content;
 	}
 	
@@ -528,7 +517,7 @@ class Sunrise_Directory {
        $result .= '</a>';
     }
     
-    $result .= '<h2 class="personTitle">'.sd_ats($salutation).sd_ats($first_name).sd_ats($middle_initial).$last_name.'</h2>';
+//     $result .= '<h2 class="personTitle">'.sd_ats($salutation).sd_ats($first_name).sd_ats($middle_initial).$last_name.'</h2>';
     $result .= sd_ats( trimCommaSpace( sd_ats($member_type, ", ").sd_ats($designation, ", ").$ministry_status ), '<br />');
     $result .= sd_ats($address_line_1, '<br />');
     $result .= sd_ats($address_line_2, '<br />');
@@ -565,7 +554,8 @@ class Sunrise_Directory {
     }
 	   $displayname = sd_ats($salutation).sd_ats($first_name).$last_name; //sd_ats($middle_initial)
 	   $result .= sd_ats( '<a class="plainPersonName" href="'.get_permalink($personid).'" alt="'.$displayname.'">' . $displayname . '</a>', '<br />' ); 
-	   $result .= sd_ats( trimCommaSpace( sd_ats( antispambot($email),'</a>, ', '<a href="mailto:'.antispambot($email).'">') . sd_ats( antispambot($second_email),'</a>, ', '<a href="mailto:'.antispambot($second_email).'">') . sd_ats($home_phone, ', ', '(H) ') . sd_ats($work_phone, ', ', '(O) ') . sd_ats($fax_number, '', '(F) ') ) , '<br />' );
+	   $result .= sd_ats( trimCommaSpace( sd_ats( antispambot($email),'</a>, ', '<a href="mailto:'.antispambot($email).'">') . sd_ats( antispambot($second_email),'</a>, ', '<a href="mailto:'.antispambot($second_email).'">') ) , '<br />' );
+	   $result .= sd_ats( trimCommaSpace( sd_ats($home_phone, ', ', '(H) ') . sd_ats($work_phone, ', ', '(O) ') . sd_ats($fax_number, '', '(F) ') ) , '<br />' );
 	   $result .= trimCommaSpace( sd_ats($address_line_1, ', ') . sd_ats($address_line_2, ', ') . sd_ats($city, ', ') . sd_ats($province, ', ') . $postal_code );
       
 	   return $result;
