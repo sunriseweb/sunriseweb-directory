@@ -6,10 +6,10 @@
 
 #directoryListCustom ul.children { margin-left: 20px; }
 .directoryListExpand { display: block; }
-.directoryListCollapse { display: none; }
-ul#directoryListCustom { list-style-type: none; width: 600px; }
-#directoryListCustom ul { width: 600px; }
-ul#directoryListCustom li { padding: 2px 0 0 8px; background: none; }
+.directoryListCollapse, .hide-area { display: none; }
+ul#directoryListCustom { list-style-type: none; padding: 0; }
+#directoryListCustom ul { list-style-type: none; line-height: normal; margin-bottom: 10px; }
+ul#directoryListCustom li { background: none;  }
 #directoryListCustom ul li { padding: 0px;}
 #directoryListCustom p { margin-left: 40px;}
 /*#directoryListCustom a { color: #BB8C00; }*/
@@ -17,4 +17,7 @@ ul#directoryListCustom li { padding: 2px 0 0 8px; background: none; }
 .peopleInDirectoryOrg a { color: #517BA5; }
 .peopleInDirectoryOrg a.plainPersonName { font-size: 18px; font-weight: 700; }
 ul.peopleInDirectoryOrg { margin-left: 40px; list-style: none; }
-#directoryListCustom ul.peopleInDirectoryOrg li { padding-top: 5px;  }    
+#directoryListCustom ul.peopleInDirectoryOrg li { padding-top: 5px;  }
+.exportResults { margin-bottom: 25px; }
+#exportToPDFForm { margin-top: 10px; }
+.reallysimplecaptcha-image { display: block; position: relative; float: left; }    

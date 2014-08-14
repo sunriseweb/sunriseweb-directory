@@ -12,6 +12,12 @@
       $(this).children('img:first').toggleClass("collapseImage");
       return false;
     });
+    
+    $('#exportToPDF').click(function(e) {
+      e.stopPropagation();
+      $('#exportToPDFForm').slideToggle('slow');
+      return false;  
+    });
 
 	});
 

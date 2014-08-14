@@ -30,9 +30,9 @@ class directoryDisplayWalker extends Walker {
 		$indent = str_repeat("\t", $depth);
 		//Check if directory orgs should be collapsed or expanded by default
 	  if( $args['expandDirectory'] == "Y" || $args['expandDirectory'] == 1) {
-      $expandClass = 'directoryListExpand';
-    } else {
       $expandClass = 'directoryListCollapse';
+    } else {
+      $expandClass = 'directoryListExpand';
     }
 		$output .= "$indent<ul class='children ".$expandClass."'>\n";
 	}
@@ -129,9 +129,9 @@ class directoryDisplayWalker extends Walker {
 			if(count($children) > 0) {
 			  //Check if directory orgs should be collapsed or expanded by default
 			  if( $expandDirectory == "Y" || $expandDirectory == 1) {
-          $expandClass = 'expandImage collapseImage';
-        } else {
           $expandClass = 'expandImage';
+        } else {
+          $expandClass = 'expandImage collapseImage';
         }
         $output .= '><a href="#" class="directoryExpand" title="Click to Expand / Collapse"><img class="'.$expandClass.'" src="'.$image_path.'trans-arrow-circle.png" /></a>&nbsp '.$link;
         $output .= $categoryPeople;

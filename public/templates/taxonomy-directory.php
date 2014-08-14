@@ -6,12 +6,18 @@
 			<div id="left-area">
     
     	 <h1><?php echo get_queried_object()->name; ?></h1>
-    	 
-		<?php
+ 
+		<?php	
+      the_content(); //needed so can hook in and add export area
+                                                      
 		  $directory_term_id = get_queried_object()->term_id;
 		  $this_orgs_children = get_term_children($directory_term_id, 'directory');
 		  $displayType = get_field('display_type', 'directory_'.$directory_term_id);
 		  $expandDirectory = get_field('expand_directory', 'directory_'.$directory_term_id);
+		  
+		  //Display export to PDF / CSV buttons and results area
+// 		  $directory_org_slug = get_queried_object()->slug;		  
+// 		  echo Sunrise_Directory::add_export_area($directory_org_slug, $displayType, $expandDirectory); 
 
       //NOTE: Main loop is modified using the pre_get_post filter prior to page load - see modify_directory_org_archive_loop function in Sunrise Directory plugin
 			if ( have_posts() ) :
@@ -53,8 +59,7 @@
 					endwhile;
 					
 					if($displayType != 'PagedList' && sizeof( $this_orgs_children ) != 0 ) { //display DrillDown format
-					  wp_enqueue_script( 'directory-org-shortcode-script', plugins_url( '../assets/js/directory_org_shortcode.js', __FILE__ ), array( 'jquery' ), Sunrise_Directory::VERSION );
-					  wp_enqueue_style( 'directory-org-styles', plugins_url( '../assets/css/directory_orgs.css', __FILE__ ), Sunrise_Directory::VERSION );
+					  
       			?>
             <ul id="directoryListCustom">
               <?php

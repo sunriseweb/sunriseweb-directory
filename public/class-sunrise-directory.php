@@ -89,6 +89,9 @@ class Sunrise_Directory {
     /* Add people metadata to single person display post content */
     add_filter( 'the_content', array( $this, 'person_content' ) );
     
+    /* Add export to csv / pdf if people CPT or directory taxonomy archive */
+    add_filter( 'the_content', array( $this, 'add_export_area' ) );    
+    
     /* Filter template used for Directory taxonomy */
     add_filter( 'template_include', array( $this, 'custom_templates' ) );
     
@@ -279,6 +282,8 @@ class Sunrise_Directory {
 	 */
 	public function enqueue_styles() {
 		wp_enqueue_style( $this->plugin_slug . '-plugin-styles', plugins_url( 'assets/css/public.css', __FILE__ ), array(), self::VERSION );
+		if( is_tax('directory') )
+		  wp_enqueue_style( 'directory-org-styles', plugins_url( 'assets/css/directory_orgs.css', __FILE__ ), array(), self::VERSION );
 	}
 
 	/**
@@ -288,6 +293,8 @@ class Sunrise_Directory {
 	 */
 	public function enqueue_scripts() {
 		wp_enqueue_script( $this->plugin_slug . '-plugin-script', plugins_url( 'assets/js/public.js', __FILE__ ), array( 'jquery' ), self::VERSION );
+		if( is_tax('directory') )
+		  wp_enqueue_script( 'directory-org-shortcode-script', plugins_url( 'assets/js/directory_org_shortcode.js', __FILE__ ), array( 'jquery' ), self::VERSION );
 	}
 
 	/**
@@ -315,6 +322,192 @@ class Sunrise_Directory {
 	public function filter_method_name() {
 		// @TODO: Define your filter hook callback here
 	}
+	
+	/**
+	 * This function work in conjunction with 
+	 * the Really Simple Captcha plugin
+	 * to add an Export to PDF button.
+	 * 
+	 * If not logged in then must enter captcha.
+	 * 
+	 * An export to CSV button is added if user is logged in.               	 
+	 *
+	 * @since    1.0.0
+	 */
+	public function add_export_area($content) {
+
+	  if ( !is_tax('directory') )
+	   return $content;
+	   
+	  $result = '';
+	  $fileSlug = get_queried_object()->slug;
+	  $directory_term_id = get_queried_object()->term_id;
+	  $displayType = get_field('display_type', 'directory_'.$directory_term_id);
+	  $expandDirectory = get_field('expand_directory', 'directory_'.$directory_term_id);
+	  
+    global $wp;
+//     $current_url = home_url(add_query_arg(array(),$wp->request));
+    $currentURL = 'http://'.$_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+    //Check to see what current URL ends with and choose proper append character
+    if(substr($currentURL,strlen($currentURL)-1,1) == "/") {
+      $currentURL .= "?";
+    } else {
+      $currentURL .= "&";
+    }
+    
+    $correct = false;
+    if(!is_user_logged_in() && isset($_GET['exportToPDF']) && $_GET['exportToPDF'] == "Y" && class_exists('ReallySimpleCaptcha')) {
+    
+      $captcha_instance = new ReallySimpleCaptcha();
+      $captcha_instance->tmp_dir = plugin_dir_path( __FILE__ ) . '/reallysimplecaptchas/';
+      
+      //Validate captcha
+      if( isset($_POST['export-captchaPrefix']) && isset($_POST['export-captchaEntry']) ) {
+      
+        $prefix = intval($_POST['export-captchaPrefix']);
+        $captchaResponse = trim($_POST['export-captchaEntry']);  
+        $correct = $captcha_instance->check($prefix, $captchaResponse);
+        
+      } 
+      
+    } else {
+    
+      $correct = true;
+      
+    }
+    
+    $result = '<div class="exportResults">';
+    
+    //Set File Defaults
+    $filepath = plugin_dir_path( __FILE__ ) . '/directory_exports/';
+    $filebaseurl = plugins_url( '/directory_exports', __FILE__ ); 
+    $filename = 'export';
+    
+    //Use options to store file name and last date generated combination.
+    $checkfiledatetime = time();
+    $getlastgendatetimeCSV = get_option( $fileSlug.$filename.'.csv', $checkfiledatetime ); //If filename option doesn't exist then defaults to time()
+    $getlastgendatetimePDF = get_option( $fileSlug.$filename.'.pdf', $checkfiledatetime ); //If filename option doesn't exist then defaults to time()
+
+    $fileprefixCSV = $fileSlug.'_'.date('Y-m-d-His_', $getlastgendatetimeCSV);
+    $fileprefixPDF = $fileSlug.'_'.date('Y-m-d-His_', $getlastgendatetimePDF);
+    $fileURLCSV = $filebaseurl.$fileprefixCSV.$filename;
+    $fileURLPDF = $filebaseurl.$fileprefixPDF.$filename;
+    
+    if( file_exists($filepath.$fileprefixCSV.$filename.'.csv') && current_user_can('edit_post') )
+//           echo do_shortcode('[filedownload file="'.$fileURLCSV.'.csv" type="application/vnd.ms-excel"]Download Last Exported CSV File - '.$fileprefixCSV.$filename.'.csv[/filedownload]').'</p>';
+      $result .= '<a target="_new" href="'.$fileURLCSV.'.csv" type="application/vnd.ms-excel">View / Download Last Exported CSV File - '.$fileprefixCSV.$filename.'.csv</a>';   
+      
+    if(file_exists($filepath.$fileprefixPDF.$filename.'.pdf'))           
+      $result .= '<a target="_new" href="'.$fileURLPDF.'.pdf" type="application/pdf">View / Download Last Exported PDF File - '.$fileprefixPDF.$filename.'.pdf</a>';
+    
+    //Display results or submit button/form depending if rquest submitted and captcha is correct 
+    if( ( ( isset($_GET['exportToExcel']) && $_GET['exportToExcel'] == "Y" ) 
+          ||  
+          ( isset($_GET['exportToPDF']) && $_GET['exportToPDF'] == "Y" ) ) 
+        && $correct ) {
+        
+        //Check to see if can regenerate file
+        $timetoregenerate = 60*60*12*-1; //non-admins can regenerate every 12 hours: 60 sec/min * 60 min/hour * 12 hours
+        if ( current_user_can('edit_post') ) //Admins can regenerate every 5 minutes
+          $timetoregenerate = 60*5*-1; //60 sec/min * 5 min
+        
+        //Set filesuffix and getlastgendatetime based on what type of file is being generated
+        if( isset($_GET['exportToExcel']) && $_GET['exportToExcel'] == "Y" ) {
+          $filesuffix = '.csv';
+          $getlastgendatetime = $getlastgendatetimeCSV;
+        } else {
+          $filesuffix = '.pdf';
+          $getlastgendatetime = $getlastgendatetimePDF;
+        }
+        
+        $timedifference = $getlastgendatetime-$checkfiledatetime;
+        if ( $getlastgendatetime == $checkfiledatetime || $timedifference < $timetoregenerate ) { 
+            $setlastgendatetime = update_option( $fileSlug.$filename.$filesuffix, $checkfiledatetime ); //Update the option with new last generated time for checking            
+            $fileprefix = $fileSlug.'_'.date('Y-m-d-His_', $checkfiledatetime);
+            $fileURL = $filebaseurl.$fileprefix.$filename;
+        }
+          
+        //Display / Generate CSV
+        if( isset($_GET['exportToExcel']) && $_GET['exportToExcel'] == "Y" ) {          
+          
+          $fhw = fopen($filepath.$fileprefix.$filename.$filesuffix,'xb') or die("Error opening file for write.");
+          $firsttime = true;
+          if (have_posts()) : while (have_posts()) : the_post();
+                  
+                  $thisPerson = get_person_csv_export($post->ID, $presbyteryChildren, $metafields);
+                  //If first time through then get column headings
+                  if($firsttime) {
+                    $columnHeadings = array();
+                    foreach($thisPerson as $columnName => $columnValue) {
+                      $columnHeadings[] = $columnName;
+                    }
+                    fputcsv($fhw,$columnHeadings,',','"');
+                    $firsttime = false;
+                  }
+      
+                  fputcsv($fhw,objectToArray($thisPerson),',','"');
+                  
+          endwhile; endif;
+          
+          rewind_posts();
+          
+          fclose($fhw);
+//           $result .= do_shortcode('[filedownload file="'.$fileURL.$filesuffix.'" type="application/vnd.ms-excel"]Download Exported CSV File[/filedownload]');
+          $result .=  '<a href="'.$fileURL.$filesuffix.'" type="application/vnd.ms-excel">View Exported CSV File</a>'; 
+            
+        }
+        
+        //Display / Generate PDF
+        if( isset($_GET['exportToPDF']) && $_GET['exportToPDF'] == "Y" ) { 
+         
+          
+        }
+        
+          
+    
+    } else {
+    
+        if(!class_exists('ReallySimpleCaptcha') || is_user_logged_in() ) { //
+          
+          $result .= sd_ats('<a href="'.$currentURL.'exportToPDF=Y">'.__("Export Results to PDF File").'</a>', ' | ');
+          
+          if( is_user_logged_in() )
+            $result .= '<a href="'.$currentURL.'exportToExcel=Y">'.__("Export Results to CSV File").'</a>';
+          
+        } elseif( class_exists('ReallySimpleCaptcha') ) {
+        
+          if( $correct != true && isset($_GET['exportToPDF']) && $_GET['exportToPDF'] == "Y" ) //captcha failed
+            $result .= '<p class="captcha_error">'.__('Incorrect captcha text entered - please try again.').'</p>';
+          
+          $result .= '<a id="exportToPDF" href="#">Export Results to PDF File</a>';
+          $result .= '<div id="exportToPDFForm" class="hide-area">';
+          $result .= '<form id="requestExportToPDF" action="'.$currentURL.'exportToPDF=Y" method="post">';              
+          $captcha_instance = new ReallySimpleCaptcha();
+          $captcha_instance->tmp_dir = plugin_dir_path( __FILE__ ) . '/reallysimplecaptchas/';
+          $word = $captcha_instance->generate_random_word();
+          $prefix = mt_rand();
+          $captchaImage = $captcha_instance->generate_image($prefix, $word);
+    //               echo $_SERVER['SCRIPT_FILENAME'];
+    //               $x = plugins_url().'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__)); 
+    //               $result .= "<h4>word=$word, prefix=$prefix, captchaImage=$captchaImage</h4>";
+          $result .= '<img class="reallysimplecaptcha-image" src="'.plugins_url( '/reallysimplecaptchas/'.$captchaImage, __FILE__ ).'" />';
+          $result .= '<input name="export-captchaEntry" type="text" placeholder="'.__("replace with image text").'">';
+          $result .= '<input type="hidden" name="export-captchaPrefix" value="'.$prefix.'">';
+          $result .= '<input id="exportToPDF" class="sd-submit" name="submitpdf" type="submit" value="'.__("Export Results to PDF File").'">';
+          $result .= '</form>';
+          $result .= '</div>';
+          
+        }
+    
+    } //end of check if export request was submitted
+    
+    $result .= '</div>';
+    
+    return $result.$content;
+    
+	}
+	
+	
 	
 	/**
 	 * Use pre_get_posts to modify archive pages:
