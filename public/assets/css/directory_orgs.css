@@ -4,6 +4,7 @@
  * correctly.
  */
 
+.sd-lastcsv, .sd-lastpdf { display: block; }
 #directoryListCustom ul.children { margin-left: 20px; }
 .directoryListExpand { display: block; }
 .directoryListCollapse, .hide-area { display: none; }

@@ -83,6 +83,9 @@ class Sunrise_Directory_Admin {
 		// Add an action link pointing to the options page.
 		$plugin_basename = plugin_basename( plugin_dir_path( realpath( dirname( __FILE__ ) ) ) . $this->plugin_slug . '.php' );
 		add_filter( 'plugin_action_links_' . $plugin_basename, array( $this, 'add_action_links' ) );
+		
+		// Enqueue styling and javascript to allow drilldown on directory taxonomy edit page
+		add_action( 'admin_head-edit-tags.php', array( $this, 'add_drilldown_to_wp_list_table' ) );
 
 		/*
 		 * Define custom functionality.
@@ -159,6 +162,24 @@ class Sunrise_Directory_Admin {
 
 	}
 	
+	
+	/**
+	 * Register and enqueue JavaScript and styling specific to editing the directory taxonomy terms.
+	 *   - add drilldown to wp list table
+	 *   	 
+	 * @since     1.0.0
+	 *
+	 * @return    null
+	 */
+	public function add_drilldown_to_wp_list_table() {
+
+		if ( $_GET['taxonomy'] != 'directory' )
+			return;
+
+		wp_enqueue_script( $this->plugin_slug . '-directory-edit-script', plugins_url( 'assets/js/directory_edit.js', __FILE__ ), array( 'jquery' ), Sunrise_Directory::VERSION );
+		wp_enqueue_style( $this->plugin_slug .'directory-edit-styles', plugins_url( 'assets/css/directory_edit.css', __FILE__ ), array(), Sunrise_Directory::VERSION );
+
+	}
 	
 	/**
 	 * Register and enqueue People-specific JavaScript and styles for use when editing a Person CPT.

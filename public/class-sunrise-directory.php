@@ -379,8 +379,8 @@ class Sunrise_Directory {
     $result = '<div class="exportResults">';
     
     //Set File Defaults
-    $filepath = plugin_dir_path( __FILE__ ) . '/directory_exports/';
-    $filebaseurl = plugins_url( '/directory_exports', __FILE__ ); 
+    $filepath = plugin_dir_path( __FILE__ ) . 'directory_exports/';
+    $filebaseurl = plugins_url( '/directory_exports/', __FILE__ ); 
     $filename = 'export';
     
     //Use options to store file name and last date generated combination.
@@ -395,10 +395,10 @@ class Sunrise_Directory {
     
     if( file_exists($filepath.$fileprefixCSV.$filename.'.csv') && current_user_can('edit_post') )
 //           echo do_shortcode('[filedownload file="'.$fileURLCSV.'.csv" type="application/vnd.ms-excel"]Download Last Exported CSV File - '.$fileprefixCSV.$filename.'.csv[/filedownload]').'</p>';
-      $result .= '<a target="_new" href="'.$fileURLCSV.'.csv" type="application/vnd.ms-excel">View / Download Last Exported CSV File - '.$fileprefixCSV.$filename.'.csv</a>';   
+      $result .= '<a class="sd-lastcsv" target="_new" href="'.$fileURLCSV.'.csv" type="application/vnd.ms-excel">'.__('Last Exported CSV File = ').$fileprefixCSV.$filename.'.csv</a>';   
       
     if(file_exists($filepath.$fileprefixPDF.$filename.'.pdf'))           
-      $result .= '<a target="_new" href="'.$fileURLPDF.'.pdf" type="application/pdf">View / Download Last Exported PDF File - '.$fileprefixPDF.$filename.'.pdf</a>';
+      $result .= '<a class="sd-lastpdf" target="_new" href="'.$fileURLPDF.'.pdf" type="application/pdf">'.__('Last Exported PDF File = ').$fileprefixPDF.$filename.'.pdf</a>';
     
     //Display results or submit button/form depending if rquest submitted and captcha is correct 
     if( ( ( isset($_GET['exportToExcel']) && $_GET['exportToExcel'] == "Y" ) 
@@ -407,7 +407,7 @@ class Sunrise_Directory {
         && $correct ) {
         
         //Check to see if can regenerate file
-        $timetoregenerate = 60*60*12*-1; //non-admins can regenerate every 12 hours: 60 sec/min * 60 min/hour * 12 hours
+        $timetoregenerate = 60*60*1*-1; //non-admins can regenerate every 1 hours 60 sec/min * 60 min/hour * 1 hours
         if ( current_user_can('edit_post') ) //Admins can regenerate every 5 minutes
           $timetoregenerate = 60*5*-1; //60 sec/min * 5 min
         
@@ -421,39 +421,64 @@ class Sunrise_Directory {
         }
         
         $timedifference = $getlastgendatetime-$checkfiledatetime;
+        $gennewfile = false;
         if ( $getlastgendatetime == $checkfiledatetime || $timedifference < $timetoregenerate ) { 
-            $setlastgendatetime = update_option( $fileSlug.$filename.$filesuffix, $checkfiledatetime ); //Update the option with new last generated time for checking            
+            $setlastgendatetime = update_option( $fileSlug.$filename.$filesuffix, $checkfiledatetime ); //Update the option with new last generated time for checking
+            
+            $getsecondlastgendatetime = get_option( 'secondlast_'.$fileSlug.$filename.$filesuffix, '' );
+            
+            if( $getlastgendatetime != $checkfiledatetime) //Only create second last if a version already exists
+              $secondlastgendatetime = update_option( 'secondlast_'.$fileSlug.$filename.$filesuffix, $getlastgendatetime ); //Update secondlast option with old file information
+            
+            if( $getsecondlastgendatetime != '') //Delete second last stored file if there was that many versions generated
+              unlink($filepath.$fileSlug.'_'.date('Y-m-d-His_', $getsecondlastgendatetime).$filename.$filesuffix);
+                        
             $fileprefix = $fileSlug.'_'.date('Y-m-d-His_', $checkfiledatetime);
             $fileURL = $filebaseurl.$fileprefix.$filename;
+            $gennewfile = true;
         }
           
         //Display / Generate CSV
-        if( isset($_GET['exportToExcel']) && $_GET['exportToExcel'] == "Y" ) {          
-          
-          $fhw = fopen($filepath.$fileprefix.$filename.$filesuffix,'xb') or die("Error opening file for write.");
-          $firsttime = true;
-          if (have_posts()) : while (have_posts()) : the_post();
-                  
-                  $thisPerson = get_person_csv_export($post->ID, $presbyteryChildren, $metafields);
-                  //If first time through then get column headings
-                  if($firsttime) {
-                    $columnHeadings = array();
-                    foreach($thisPerson as $columnName => $columnValue) {
-                      $columnHeadings[] = $columnName;
+        if( isset($_GET['exportToExcel']) && $_GET['exportToExcel'] == "Y" ) {
+        
+          if($gennewfile) { //If enough time has elapsed since last file generation the allow new file to be generated
+                    
+            $fhw = fopen($filepath.$fileprefix.$filename.$filesuffix,'xb') or die("Error opening file for write.");
+            $firsttime = true;
+            if (have_posts()) : while (have_posts()) : the_post();
+                    
+                    $thisPerson = $this->get_person_csv_export(get_the_id());
+                    
+                    //If first time through then get column headings
+                    if($firsttime) {
+                      $columnHeadings = array();
+                      foreach($thisPerson as $columnName => $columnValue) {
+                        $columnHeadings[] = $columnName;
+                      }
+                      fputcsv($fhw,$columnHeadings,',','"');
+                      $firsttime = false;
                     }
-                    fputcsv($fhw,$columnHeadings,',','"');
-                    $firsttime = false;
-                  }
-      
-                  fputcsv($fhw,objectToArray($thisPerson),',','"');
-                  
-          endwhile; endif;
-          
-          rewind_posts();
-          
-          fclose($fhw);
-//           $result .= do_shortcode('[filedownload file="'.$fileURL.$filesuffix.'" type="application/vnd.ms-excel"]Download Exported CSV File[/filedownload]');
-          $result .=  '<a href="'.$fileURL.$filesuffix.'" type="application/vnd.ms-excel">View Exported CSV File</a>'; 
+        
+                    fputcsv($fhw,$thisPerson,',','"');
+                    
+            endwhile; endif;
+            
+            rewind_posts();
+            
+            fclose($fhw);
+            
+  //           $result .= do_shortcode('[filedownload file="'.$fileURL.$filesuffix.'" type="application/vnd.ms-excel"]Download Exported CSV File[/filedownload]');
+            $result .= '<a href="'.$fileURL.$filesuffix.'" type="application/vnd.ms-excel">'.__('Newly Exported CSV File = ').$fileprefix.$filename.$filesuffix.'</a>';
+            
+          } else {
+            $timeremaining = ($timetoregenerate*-1) + $timedifference;
+            $minutes = floor($timeremaining/60);
+            $seconds = fmod($timeremaining,60);
+            $duration = $this->duration( $timeremaining, $if_reached=null );
+            $result .= __('You may generate a new export in ').$duration;
+//             $result .= __('You may generate a new export in ')."duration=$duration, checkfiledatetime=$checkfiledatetime, getlastgendatetime=$getlastgendatetime, timedifference=$timedifference, timetoregenerate = $timetoregenerate, timeremaining= $timeremaining, minutes =$minutes, seconds = $seconds";
+            
+          }
             
         }
         
@@ -934,8 +959,7 @@ class Sunrise_Directory {
 	 * It adds in the post meta field keys required for ACF.              	 
 	 *
 	 * @since    1.0.0
-	 */
-	
+	 */	
 	public function add_acf_metadata_after_wpallimport($post_id) {
     $cpt = get_post_type( $post_id );
     $field_groups = $this->get_acf_field_groups_by_cpt($cpt);
@@ -944,6 +968,103 @@ class Sunrise_Directory {
         update_post_meta($post_id, '_'.$field['name'], $field['key']);
       }
     }
-  }        
+  }
+  
+  /**
+	 * This function retrieves a person's information for export to CSV	 
+	 *
+	 * @since    1.0.0
+	 */	
+	public function get_person_csv_export($post_id) {
+    $result = array( 'PersonID' => $post_id );
+    $presbyteries_id = 0;
+    $presbyteries = "";
+    $pastoralCharges = "";
+    $otherOrgs = "";    
+    $directoryOrgs = get_the_terms($post_id, 'directory');  					
+    if ( $directoryOrgs && ! is_wp_error( $directoryOrgs ) ) { 
+    	foreach ( $directoryOrgs as $directoryOrg ) {
+    	  //Check Presbytery - i.e. if parent is Presbyteries & Pastoral Charges directory org - ID=62
+//     	  if($directoryOrg->parent == $presbyteries_id) { //62 is the ID of the Presbyteries & Pastoral Charges directory org
+//           $presbyteries .= $directoryOrg->name.', ';
+//         //Check if Pastoral Charge - i.e. a child of a Presbytery
+//         } elseif ( in_array($directoryOrg->term_id, $presbyteryChildren) ) {
+//           $pastoralCharges .= $directoryOrg->name.', ';
+//         } else {
+      		$otherOrgs .= $directoryOrg->name.', ';
+//     		}
+    		
+    		$allDirectorySlugs .= $directoryOrg->slug.', ';
+    	}
+    }
+    
+    $conferences = get_the_terms($post_id, 'conferences');
+    if ( $conferences && ! is_wp_error( $conferences ) ) {
+      foreach ( $conferences as $conference ) {
+        $allConferenceSlugs .= $conference->slug.', ';  
+      }
+      
+    }
+	  
+	  $result['Presbytery'] = trimCommaSpace($presbyteries);
+	  $result['Pastoral Charge(s)'] = trimCommaSpace($pastoralCharges);
+
+    $field_groups = $this->get_acf_field_groups_by_cpt('people');
+    foreach($field_groups as $fields) {
+      foreach($fields as $field) {
+        $result[$field['name']] = get_field($field['name']);
+      }
+    }
+    
+    $result['Directory Orgs'] = trimCommaSpace($otherOrgs);
+    $result['taxonomy_directory'] = trimCommaSpace($allDirectorySlugs);
+    $result['taxonomy_conferences'] = trimCommaSpace($allConferenceSlugs);
+    
+    return $result;
+  }
+  
+/**
+	 * This function determines if 
+	 *
+	 * @since    1.0.0
+	 */  
+  function duration( $int_seconds=0, $if_reached=null )
+  {
+      $key_suffix = 's';
+      $periods = array(
+                      'year'        => 31556926,
+                      'month'        => 2629743,
+                      'day'        => 86400,
+                      'hour'        => 3600,
+                      'minute'    => 60,
+                      'second'    => 1
+                      );
+  
+      // used to hide 0's in higher periods
+      $flag_hide_zero = true;
+  
+      // do the loop thang
+      foreach( $periods as $key => $length )
+      {
+          // calculate
+          $temp = floor( $int_seconds / $length );
+  
+          // determine if temp qualifies to be passed to output
+          if( !$flag_hide_zero || $temp > 0 )
+          {
+              // store in an array
+              $build[] = $temp.' '.$key.($temp!=1?'s':null);
+  
+              // set flag to false, to allow 0's in lower periods
+              $flag_hide_zero = false;
+          }
+  
+          // get the remainder of seconds
+          $int_seconds = fmod($int_seconds, $length);
+      }
+  
+      // return output, if !empty, implode into string, else output $if_reached
+      return ( !empty($build)?implode(', ', $build):$if_reached );
+  }                
   	
 } 
