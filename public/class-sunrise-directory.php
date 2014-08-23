@@ -341,9 +341,12 @@ class Sunrise_Directory {
 	   
 	  $result = '';
 	  $fileSlug = get_queried_object()->slug;
+	  $thisName = get_queried_object()->name;
 	  $directory_term_id = get_queried_object()->term_id;
 	  $displayType = get_field('display_type', 'directory_'.$directory_term_id);
 	  $expandDirectory = get_field('expand_directory', 'directory_'.$directory_term_id);
+	  $termChildren = get_term_children($directory_term_id,'directory');
+    $numChildren = count($termChildren);
 	  
     global $wp;
 //     $current_url = home_url(add_query_arg(array(),$wp->request));
@@ -395,10 +398,10 @@ class Sunrise_Directory {
     
     if( file_exists($filepath.$fileprefixCSV.$filename.'.csv') && current_user_can('edit_post') )
 //           echo do_shortcode('[filedownload file="'.$fileURLCSV.'.csv" type="application/vnd.ms-excel"]Download Last Exported CSV File - '.$fileprefixCSV.$filename.'.csv[/filedownload]').'</p>';
-      $result .= '<a class="sd-lastcsv" target="_new" href="'.$fileURLCSV.'.csv" type="application/vnd.ms-excel">'.__('Last Exported CSV File = ').$fileprefixCSV.$filename.'.csv</a>';   
+      $result .= '<a class="sd-lastcsv" target="_new" href="'.$fileURLCSV.'.csv" type="application/vnd.ms-excel" target="_blank">'.__('Last Exported CSV File = ').$fileprefixCSV.$filename.'.csv</a>';   
       
     if(file_exists($filepath.$fileprefixPDF.$filename.'.pdf'))           
-      $result .= '<a class="sd-lastpdf" target="_new" href="'.$fileURLPDF.'.pdf" type="application/pdf">'.__('Last Exported PDF File = ').$fileprefixPDF.$filename.'.pdf</a>';
+      $result .= '<a class="sd-lastpdf" target="_new" href="'.$fileURLPDF.'.pdf" type="application/pdf" target="_blank">'.__('Last Exported PDF File = ').$fileprefixPDF.$filename.'.pdf</a>';
     
     //Display results or submit button/form depending if rquest submitted and captcha is correct 
     if( ( ( isset($_GET['exportToExcel']) && $_GET['exportToExcel'] == "Y" ) 
@@ -409,7 +412,7 @@ class Sunrise_Directory {
         //Check to see if can regenerate file
         $timetoregenerate = 60*60*1*-1; //non-admins can regenerate every 1 hours 60 sec/min * 60 min/hour * 1 hours
         if ( current_user_can('edit_post') ) //Admins can regenerate every 5 minutes
-          $timetoregenerate = 60*5*-1; //60 sec/min * 5 min
+          $timetoregenerate = 60*.1*-1; //60 sec/min * 5 min
         
         //Set filesuffix and getlastgendatetime based on what type of file is being generated
         if( isset($_GET['exportToExcel']) && $_GET['exportToExcel'] == "Y" ) {
@@ -468,28 +471,42 @@ class Sunrise_Directory {
             fclose($fhw);
             
   //           $result .= do_shortcode('[filedownload file="'.$fileURL.$filesuffix.'" type="application/vnd.ms-excel"]Download Exported CSV File[/filedownload]');
-            $result .= '<a href="'.$fileURL.$filesuffix.'" type="application/vnd.ms-excel">'.__('Newly Exported CSV File = ').$fileprefix.$filename.$filesuffix.'</a>';
+            $result .= '<a href="'.$fileURL.$filesuffix.'" type="application/vnd.ms-excel" target="_blank">'.__('Newly Exported CSV File = ').$fileprefix.$filename.$filesuffix.'</a>';
             
           } else {
             $timeremaining = ($timetoregenerate*-1) + $timedifference;
             $minutes = floor($timeremaining/60);
             $seconds = fmod($timeremaining,60);
             $duration = $this->duration( $timeremaining, $if_reached=null );
-            $result .= __('You may generate a new export in ').$duration;
-//             $result .= __('You may generate a new export in ')."duration=$duration, checkfiledatetime=$checkfiledatetime, getlastgendatetime=$getlastgendatetime, timedifference=$timedifference, timetoregenerate = $timetoregenerate, timeremaining= $timeremaining, minutes =$minutes, seconds = $seconds";
-            
+            $result .= __('You may generate a new export in ').$duration;            
           }
             
         }
         
         //Display / Generate PDF
-        if( isset($_GET['exportToPDF']) && $_GET['exportToPDF'] == "Y" ) { 
+        if( isset($_GET['exportToPDF']) && $_GET['exportToPDF'] == "Y" ) {
+        
+          if($gennewfile) { //If enough time has elapsed since last file generation the allow new file to be generated 
          
-          
+            include( plugin_dir_path( __FILE__ ) . '/includes/createPDF.php' );
+            
+            $result .= '<a href="'.$fileURL.$filesuffix.'" type="application/pdf" target="_blank">'.__('Newly Exported PDF File = ').$fileprefix.$filename.$filesuffix.'</a>';
+              
+          } else {
+            $timeremaining = ($timetoregenerate*-1) + $timedifference;
+            $minutes = floor($timeremaining/60);
+            $seconds = fmod($timeremaining,60);
+            $duration = $this->duration( $timeremaining, $if_reached=null );
+            $result .= __('You may generate a new export in ').$duration;            
+          }
+            
+        } //check if exportToPDF is set
+        
+        //Delete option if something has gone wrong and file doesn't exist.
+        if(!file_exists($filepath.$fileprefix.$filename.$filesuffix)) {
+          delete_option($fileSlug.$filename.$filesuffix);
         }
         
-          
-    
     } else {
     
         if(!class_exists('ReallySimpleCaptcha') || is_user_logged_in() ) { //
@@ -531,9 +548,34 @@ class Sunrise_Directory {
     return $result.$content;
     
 	}
+
+  /**
+	 * Get all post ids for a given post_type, taxonomy and term
+	 *  - Directory Org taxonomy
+	 *  - People CPT
+	 *  - specific Directory Org(s) as term      	 
+	 * 	 
+	 * @since    1.0.1
+	 */
+	public function get_post_ids( $post_type='people', $taxonomy='directory', $term ) {
 	
-	
-	
+    return get_posts(array(
+        'numberposts'   => -1, // get all posts.
+        'orderby' => 'title',
+        'order' => 'ASC',
+        'post_type' => $post_type,
+        'tax_query'     => array(
+            array(
+                'taxonomy'  => $taxonomy,
+                'field'     => 'id',
+                'terms'     => is_array($term) ? $term : array($term),
+            ),
+        ),
+        'fields'        => 'ids', // only get post IDs.
+    ));
+    
+  }
+  	
 	/**
 	 * Use pre_get_posts to modify archive pages:
 	 *  - Directory Org taxonomy
@@ -708,7 +750,7 @@ class Sunrise_Directory {
 	 *
 	 * @since    1.0.0
 	 */
-	public function display_person_long($personid) {
+	public function display_person_long($personid, $name = false, $imagedimensions = array(250,250)) {
     $result = '';
     $fields_to_retrieve = array( 'salutation', 'first_name', 'middle_initial', 'last_name', 'email', 'second_email', 'home_phone', 'work_phone', 'address_line_1', 'address_line_2', 'city', 'province', 'postal_code', 'member_type', 'designation', 'ministry_status' );
     foreach($fields_to_retrieve as $fieldname) {
@@ -728,14 +770,19 @@ class Sunrise_Directory {
     //Display Person metadata
     $result .= '<div class="personSummary">';
     
-    if ( has_post_thumbnail()) {
-       $large_image_url = wp_get_attachment_image_src( get_post_thumbnail_id($post->ID), 'large');
+    if($name) {
+      $displayname = the_title_attribute(array('echo'=> 0, 'post'=>$personid));
+      $result .= '<h2 class="personTitle"><a href="'.get_permalink($personid).'" alt="'.$displayname.'">' . $displayname . '</a></h2>';
+//       $result .= '<h2 class="personTitle">'.sd_ats($salutation).sd_ats($first_name).sd_ats($middle_initial).$last_name.'</h2>';
+    }
+      
+    if ( has_post_thumbnail($personid)) {
+       $large_image_url = wp_get_attachment_image_src( get_post_thumbnail_id($personid), 'large');
        $result .= '<a href="' . $large_image_url[0] . '" alt="' . the_title_attribute('echo=0') . '" title="' . the_title_attribute('echo=0') . '" >';
-       $result .= get_the_post_thumbnail($post->ID, array(250,250), array('class' => 'alignleft')); 
+       $result .= get_the_post_thumbnail($personid, $imagedimensions, array('class' => 'alignleft person-thumb')); 
        $result .= '</a>';
     }
     
-//     $result .= '<h2 class="personTitle">'.sd_ats($salutation).sd_ats($first_name).sd_ats($middle_initial).$last_name.'</h2>';
     $result .= sd_ats( trimCommaSpace( sd_ats($member_type, ", ").sd_ats($designation, ", ").$ministry_status ), '<br />');
     $result .= sd_ats($address_line_1, '<br />');
     $result .= sd_ats($address_line_2, '<br />');
@@ -754,7 +801,7 @@ class Sunrise_Directory {
 	 *
 	 * @since    1.0.0
 	 */
-	 public function display_person_short($personid) {
+	 public function display_person_short($personid, $separator = '<br />') {
 	   $result = '';
 	   $fields_to_retrieve = array( 'salutation', 'first_name', 'middle_initial', 'last_name', 'email', 'second_email', 'home_phone', 'work_phone', 'address_line_1', 'address_line_2', 'city', 'province', 'postal_code' );
      foreach($fields_to_retrieve as $fieldname) {
@@ -771,9 +818,9 @@ class Sunrise_Directory {
       }    
     }
 	   $displayname = sd_ats($salutation).sd_ats($first_name).$last_name; //sd_ats($middle_initial)
-	   $result .= sd_ats( '<a class="plainPersonName" href="'.get_permalink($personid).'" alt="'.$displayname.'">' . $displayname . '</a>', '<br />' ); 
-	   $result .= sd_ats( trimCommaSpace( sd_ats( antispambot($email),'</a>, ', '<a href="mailto:'.antispambot($email).'">') . sd_ats( antispambot($second_email),'</a>, ', '<a href="mailto:'.antispambot($second_email).'">') ) , '<br />' );
-	   $result .= sd_ats( trimCommaSpace( sd_ats($home_phone, ', ', '(H) ') . sd_ats($work_phone, ', ', '(O) ') . sd_ats($fax_number, '', '(F) ') ) , '<br />' );
+	   $result .= sd_ats( '<a class="plainPersonName" href="'.get_permalink($personid).'" alt="'.$displayname.'">' . $displayname . '</a>', $separator ); 
+	   $result .= sd_ats( trimCommaSpace( sd_ats( antispambot($email),'</a>, ', '<a href="mailto:'.antispambot($email).'">') . sd_ats( antispambot($second_email),'</a>, ', '<a href="mailto:'.antispambot($second_email).'">') ) , $separator );
+	   $result .= sd_ats( trimCommaSpace( sd_ats($home_phone, ', ', '(H) ') . sd_ats($work_phone, ', ', '(O) ') . sd_ats($fax_number, '', '(F) ') ) , $separator );
 	   $result .= trimCommaSpace( sd_ats($address_line_1, ', ') . sd_ats($address_line_2, ', ') . sd_ats($city, ', ') . sd_ats($province, ', ') . $postal_code );
       
 	   return $result;

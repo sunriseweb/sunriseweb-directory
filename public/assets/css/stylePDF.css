@@ -1,0 +1,100 @@
+/* 
+  For use when generating PDF of "People" custom post type
+*/
+
+
+/*------------------------------------------------*/
+/*-----------------[RESET]------------------------*/
+/*------------------------------------------------*/
+
+/* http://meyerweb.com/eric/tools/css/reset/ */
+/* v1.0 | 20080212 */
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, font, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend { margin: 0; padding: 0; border: 0; outline: 0; font-size: 100%; vertical-align: baseline; background: transparent; }
+
+body { line-height: 1; }
+ol, ul { list-style: none; }
+blockquote, q {	quotes: none; }
+
+blockquote:before, blockquote:after,q:before, q:after { content: ''; content: none; }
+
+/* remember to define focus styles! */
+:focus { outline: 0; }
+
+/* remember to highlight inserts somehow! */
+ins { text-decoration: none; }
+del { text-decoration: line-through; }
+
+/* tables still need 'cellspacing="0"' in the markup */
+table { border-collapse: collapse; border-spacing: 0; }
+
+
+/*------------------------------------------------*/
+/*-----------------[BASIC STYLES]-----------------*/
+/*------------------------------------------------*/
+
+body { line-height: 18px; font-family: 'Droid Sans', Arial, sans-serif; font-size: 12px; color: #5E5E5E; background-color: #FFFFFF; }
+
+a { text-decoration: none; color: #BB8C00; }
+a:hover { text-decoration: underline; }
+.clear { clear: both; }
+.ui-tabs-hide { display: none; }
+br.clear { margin: 0px; padding: 0px; }
+
+h1, h2, h3, h4, h5, h6 { margin: 0; padding: 0; color: #111; letter-spacing: -1px; line-height: 1em; font-weight: normal; }
+h1 a, h2 a, h3 a, h4 a, h5 a, h6 a { color: #111; margin: 0; padding: 0; }
+h1 { font-size: 30px; margin: 50px 0; }
+h2 { font-size: 24px; }
+h3 { font-size: 22px; }
+h4 { font-size: 18px; }
+h5 { font-size: 16px; }
+h6 { font-size: 14px; }
+p { padding-bottom: 5px; line-height: 18px; }
+strong { font-weight: bold; color: #1c1c1c; }
+cite, em, i { font-style: italic; }
+pre, code { font-family: Courier New, monospace; margin-bottom: 10px; }
+ins { text-decoration: none; }
+sup, sub { height: 0; line-height: 1; position: relative; vertical-align: baseline; }
+sup { bottom: 0.8em; }
+sub { top: 0.3em; }
+dl { margin: 0 0 1.5em 0; }
+dl dt { font-weight: bold; }
+dd  { margin-left: 1.5em;}
+blockquote  { margin: 1.5em; padding: 1em; color: #666666; background: #e6e6e6; font-style: italic; border: 1px solid #dcdcdc; }
+	blockquote p { padding-bottom: 0px; }
+
+/* For Directory and styling People */
+
+.personTitle { /*font-size: 20px; padding-bottom: 0;*/ padding-bottom: 0; margin: 0; }
+.personTitle a { color: #517BA5; text-decoration: none; padding-bottom: 0; margin: 0; }
+.pdfPersonDiv { float: left; margin: 0 0 5px 9px; padding: 2px; width: 47%; border: 1px solid gray; height: 200px; }
+/*.pdfPersonDiv { float: left; margin: 0 0 5px 9px; padding: 2px; width: 47%; border: 1px solid gray; }*/
+.pdfPersonDiv2 { margin: 0 0 5px 9px; padding: 2px; width: 47%; border: 1px solid gray; height: 200px; clear: both; }
+.plainPersonName { font-size: 14px; } 
+.person-thumbnail { /* display:block; float:left; position:relative; margin-right: 30px; height: 50px; width: 50px;*/ }
+.personThumbnailLink { /* display: block; border: 1px solid #D8D8D8; margin: 5px 5px 5px 0;*/ }
+.person-thumb { border: 1px solid gray; margin: 1px 1px 0 2px; float:right; width: 100px; }
+.pdfPersonDiv h2 a { font-size: 16px; }
+
+ul#directoryListCustom { list-style-type: none; width: 600px; }
+#directoryListCustom ul { width: 600px; }
+ul#directoryListCustom li { padding: 2px 0 0 8px; background: none; }
+#directoryListCustom ul li { padding: 0px;}
+#directoryListCustom p { margin-left: 40px;}
+
+/*.directoryName { clear: both; margin-top: 5px; font-weight: bold; font-style: underline; font-size: 18px; }
+.directoryTitle { font-weight: bold; }*/ 
+.peopleInDirectoryOrg a { color: #517BA5; }
+.peopleInDirectoryOrg a.plainPersonName { font-size: 18px; color: #517BA5; }
+ul.peopleInDirectoryOrg { margin-left: 40px; list-style: disc; }
+ul.peopleInDirectoryOrg li { padding: 0; }
+.peopleInDirectoryOrg ul li { padding: 0; color: #517BA5; }
+
+a.linkFormalName { font-size: 14px; }

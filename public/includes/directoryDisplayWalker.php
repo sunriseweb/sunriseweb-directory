@@ -71,6 +71,7 @@ class directoryDisplayWalker extends Walker {
 		$children = get_term_children($category->term_id, $category->taxonomy);
 		$numPeopleInOrg = count($peopleByDirectory[$category->term_id]);
 		
+		$additional_text = get_field('additional_text', 'directory_'.$category->term_id);
     //Parse description for current directory org to get directory settings it may contains (e.g. topHTML, DisplayType, etc.)
 //     $directorySettings = get_fields('directory_'.$directory_term_id); //results in array with $field_name => $value - see http://www.advancedcustomfields.com/resources/functions/get_fields/ 
 //     $lines = explode("|".chr(13).chr(10),$category->description);
@@ -90,7 +91,7 @@ class directoryDisplayWalker extends Walker {
     	}
     	$categoryPeople .= '</ul>';
 
-    } elseif (trim($directorySettings['additional_text']) == "") {
+    } elseif(trim($additional_text) == "") {
       $vacantString = " - Vacant";
     }
            	
@@ -106,8 +107,8 @@ class directoryDisplayWalker extends Walker {
     		$link .= '<span class="directoryName">'.$cat_name.'</span></a>';
     }
     
-    if(trim($directorySettings['additional_text']) != "" ) {
-      $link .= "<p>".trim($directorySettings['additional_text'])."</p>";
+    if(trim($additional_text) != "" ) {
+      $link .= "<p>".$additional_text."</p>";
     }
     
 		if ( !empty($show_date) )

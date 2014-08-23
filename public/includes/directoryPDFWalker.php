@@ -29,7 +29,6 @@ class directoryPDFWalker extends Walker {
 		if ( 'list' != $args['style'] )
 			return;
 		$indent = str_repeat("\t", $depth);
-		//Check if directory orgs should be collapsed or expanded by default
     $output .= "$indent<ul class='children'>\n";
 	}
 
@@ -64,81 +63,47 @@ class directoryPDFWalker extends Walker {
 		$cat_name = esc_attr( $category->name );
 		$cat_name = apply_filters( 'list_cats', $cat_name, $category );
 		$children = get_term_children($category->term_id, $category->taxonomy);
-		$numPeopleInOrg = count($peopleByDirectory[$category->term_id]);
-		//Parse description for current directory org to get directory settings it may contains (e.g. topHTML, DisplayType, etc.) 
-    $lines = explode("|".chr(13).chr(10),$category->description);
-    foreach($lines as $lineindex => $settingString) {
-      $thisSetting = explode(":=",$settingString);
-      if(trim($thisSetting[0]) != "") {
-        $directorySettings[$thisSetting[0]] = $thisSetting[1];
-      }
-    }    
-    
+		
+		if(sizeof($children)==0) { //Only display people for bottom level orgs
+  		$peopleByDirectory = Sunrise_Directory::get_post_ids( 'people', 'directory', $category->term_id );
+  		$numPeopleInOrg = count($peopleByDirectory);
+		} else {
+      $peopleByDirectory = array();
+      $numPeopleInOrg = 0;
+    }
+		
+		$additional_text = get_field('additional_text', 'directory_'.$category->term_id);
+		
 		//Create list of people in directory			
     if($numPeopleInOrg > 0) {
         if ( 'list' == $args['style'] ) {
           if($numPeopleInOrg == 1) {
-            foreach($peopleByDirectory[$category->term_id] as $personID => $personInfo) {
-              $personMeta = get_person_metadata($personID);
-//               'plainPersonName',
-//                   'designationStatus', 
-//                   'streetaddress',
-//                   'addressline2',
-//                   'cityProvince',
-//                   'postalcode',
-//                   'personEmail',
-//                   'personPhone'
-//               
-//               $personDisplay .= $personMeta[$infoName].' ';      
-              foreach($infoToDisplay as $displayOrder => $infoName) {
-                if(trim($personMeta[$infoName]) != "") {
-                  $personDisplay .= $personMeta[$infoName].', ';
-                }
-              }
-              $personDisplay .= $personMeta['presbyteries'].', ';
+          
+            foreach($peopleByDirectory as $el => $personid) {
+              $categoryPeople .= Sunrise_Directory::display_person_long($personid).'<br />';
           	}
-          	$categoryPeople = substr($personDisplay,0,strlen($personDisplay)-2).'<br />';
+          	
           } else {
             $categoryPeople = '<ul class="peopleInDirectoryOrg">';
-            foreach($peopleByDirectory[$category->term_id] as $personID => $personInfo) {
-              $personMeta = get_person_metadata($personID);      
-              foreach($infoToDisplay as $displayOrder => $infoName) {
-                if(trim($personMeta[$infoName]) != "") {
-                  $personDisplay .= $personMeta[$infoName].', ';
-                }
-              }
-              $personDisplay .= $personMeta['presbyteries'].', ';
-              
-              $categoryPeople .= '<li>'.substr($personDisplay,0,strlen($personDisplay)-2).'</li>';
-              $personDisplay = '';
+            foreach($peopleByDirectory as $el => $personid) {
+              $categoryPeople .= '<li>'.Sunrise_Directory::display_person_short($personid, ', ').'</li>';
           	}
             $categoryPeople .= '</ul>';
           } 
         } else {
-
-          $categoryPeople = '';
-          foreach($peopleByDirectory[$category->term_id] as $personID => $personInfo) {
-           $personMeta = get_person_metadata($personID);
-           //Get the thumbnail if one exists
-            $thumbNail = '';
-            if ( has_post_thumbnail($personID)) {
-              $thumbNailTitle = esc_attr( $personMeta['plainFormalName'] );
-        			$attr = array( 'class'	=> 'person-thumb', 'title' => $thumbNailTitle);
-              $thumbNail .= get_the_post_thumbnail( $personID, array(100,100), $attr );
-            }
-            $personDisplay = '<div class="pdfPersonDiv">';
-            $personDisplay .= $thumbNail;        
-            foreach($infoToDisplay as $displayOrder => $infoName) {
-              if(trim($personMeta[$infoName]) != "") {
-                $personDisplay .= $personMeta[$infoName].'<br />';
-              }
-            }
-            $personDisplay .= '</div>';
-           
-        	  $categoryPeople .= $personDisplay.'<br />';
+          
+          foreach( $peopleByDirectory as $el => $personid) {
+            $categoryPeople = '<div class="pdfPersonDiv">';
+            $categoryPeople .= Sunrise_Directory::display_person_long($personid, true, array(100,100));
+            $categoryPeople .= '</div>';           
+        	  $categoryPeople .= '<br />';
         	}
+        	
         }
-    } elseif (trim($directorySettings['topHTML']) == "") {
+        
+        wp_reset_postdata();
+        
+    } elseif(trim($additional_text) == "") {
       $vacantString = "Vacant";
     }
            	
@@ -155,8 +120,8 @@ class directoryPDFWalker extends Walker {
 //     		$link .= $cat_name.'</a></div>';
     }
     
-    if(trim($directorySettings['topHTML']) != "" ) {
-      $link .= "<p>".trim($directorySettings['topHTML'])."</p>";
+    if(trim($additional_text) != "" ) {
+      $link .= "<p>".$additional_text."</p>";
     }
     
     

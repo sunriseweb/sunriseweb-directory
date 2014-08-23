@@ -31,15 +31,18 @@
             first_time = 0;
           }
           
+          console.log('trid='+trid+', last_level='+last_level+', current_level='+current_level);
+          
           if(last_level != current_level && current_level > last_level) {
             parent_trid[current_level] = last_parent_trid;
             last_parent_trid = 'parent-'+trid;
             last_level = current_level;  
-          }
-          
-          if(last_level != current_level && current_level < last_level) {
-            last_parent_trid = 'parent-'+trid;
+          } else if(last_level != current_level && current_level < last_level) {
+            last_parent_trid = 'parent-'+trid;                           
+            parent_trid[last_level] = last_parent_trid;
             last_level = current_level; 
+          } else if(current_level == last_level){
+            last_parent_trid = 'parent-'+trid;
           }
     		  
     		  // Show all top-level taxonomy terms
@@ -70,6 +73,11 @@
             $('.parent-'+trid+"-"+thislevel).toggle();
             
             $(this).toggleClass('expanded');
+            if($(this).hasClass('expanded')) {
+              $(this).html('&ndash;');  
+            } else {
+              $(this).html('+');
+            }
             
             return false; 
           }); 
